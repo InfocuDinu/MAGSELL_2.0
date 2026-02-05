@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.geometry.Insets?>
+
+<VBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.bakerymanager.controller.DashboardController" spacing="20">
+    
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+    
+    <!-- Header -->
+    <Label text="Dashboard - Panou de Control" styleClass="label-title"/>
+    
+    <!-- Statistics Cards -->
+    <HBox spacing="15" alignment="CENTER">
+        <VBox styleClass="form-pane" spacing="10" prefWidth="200">
+            <Label text="Produse în Stoc" styleClass="label-subtitle"/>
+            <Label fx:id="productsInStockLabel" text="0" styleClass="label-title"/>
+        </VBox>
+        
+        <VBox styleClass="form-pane" spacing="10" prefWidth="200">
+            <Label text="Ingrediente în Stoc" styleClass="label-subtitle"/>
+            <Label fx:id="ingredientsInStockLabel" text="0" styleClass="label-title"/>
+        </VBox>
+        
+        <VBox styleClass="form-pane" spacing="10" prefWidth="200">
+            <Label text="Stocuri Scăzute" styleClass="label-subtitle"/>
+            <Label fx:id="lowStockLabel" text="0" styleClass="label-title" textFill="orange"/>
+        </VBox>
+        
+        <VBox styleClass="form-pane" spacing="10" prefWidth="200">
+            <Label text="Vânzări Astăzi" styleClass="label-subtitle"/>
+            <Label fx:id="todaySalesLabel" text="0.00 lei" styleClass="label-title" textFill="green"/>
+        </VBox>
+    </HBox>
+    
+    <!-- Quick Actions -->
+    <VBox spacing="15">
+        <Label text="Acțiuni Rapide" styleClass="label-subtitle"/>
+        <HBox spacing="15" alignment="CENTER">
+            <Button text="📦 Adaugă Stoc" onAction="#addStock" styleClass="button, primary" prefWidth="150"/>
+            <Button text="🏭 Producție Rapidă" onAction="#quickProduction" styleClass="button, success" prefWidth="150"/>
+            <Button text="💰 Vânzare Rapidă" onAction="#quickSale" styleClass="button, primary" prefWidth="150"/>
+            <Button text="📊 Raport Zilnic" onAction="#dailyReport" styleClass="button" prefWidth="150"/>
+        </HBox>
+    </VBox>
+    
+    <!-- Recent Activity -->
+    <VBox spacing="10" VBox.vgrow="ALWAYS">
+        <Label text="Activitate Recentă" styleClass="label-subtitle"/>
+        <TableView fx:id="activityTable" VBox.vgrow="ALWAYS">
+            <columns>
+                <TableColumn fx:id="activityDateColumn" text="Data" prefWidth="150"/>
+                <TableColumn fx:id="activityTypeColumn" text="Tip" prefWidth="120"/>
+                <TableColumn fx:id="activityDescriptionColumn" text="Descriere" prefWidth="300"/>
+                <TableColumn fx:id="activityUserColumn" text="Utilizator" prefWidth="100"/>
+            </columns>
+        </TableView>
+    </VBox>
+    
+</VBox>

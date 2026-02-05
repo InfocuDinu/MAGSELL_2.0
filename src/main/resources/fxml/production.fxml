@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.geometry.Insets?>
+
+<BorderPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.bakerymanager.controller.ProductionController">
+    
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+    
+    <top>
+        <VBox spacing="15">
+            <HBox alignment="CENTER_LEFT" spacing="15">
+                <Label text="Modul Producție" styleClass="label-title"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                
+                <ComboBox fx:id="productComboBox" promptText="Selectează Produs" prefWidth="200"/>
+                <TextField fx:id="quantityField" promptText="Cantitate" prefWidth="100"/>
+                <Button text="🏭 Producție" onAction="#executeProduction" styleClass="button, success"/>
+                <Button text="📋 Verifică Stoc" onAction="#checkStock" styleClass="button, primary"/>
+            </HBox>
+            
+            <!-- Production Status -->
+            <HBox styleClass="form-pane" spacing="20" alignment="CENTER_LEFT" padding="10">
+                <Label text="Status Producție:" styleClass="label-subtitle"/>
+                <Label fx:id="productionStatusLabel" text="Gata" styleClass="label-muted"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label fx:id="stockStatusLabel" text="Stocuri OK" styleClass="label-muted"/>
+            </HBox>
+        </VBox>
+    </top>
+    
+    <center>
+        <SplitPane dividerPositions="0.5" orientation="HORIZONTAL">
+            <!-- Recipe Management -->
+            <VBox spacing="10">
+                <HBox alignment="CENTER_LEFT" spacing="10">
+                    <Label text="Rețetar Produs" styleClass="label-subtitle"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Button text="➕ Adaugă Ingredient" onAction="#addRecipeItem" styleClass="button, primary"/>
+                    <Button text="📄 Rețetă Nouă" onAction="#createNewRecipe" styleClass="button, success"/>
+                </HBox>
+                
+                <TableView fx:id="recipeTable" VBox.vgrow="ALWAYS">
+                    <columns>
+                        <TableColumn fx:id="recipeIngredientColumn" text="Ingredient" prefWidth="150"/>
+                        <TableColumn fx:id="recipeQuantityColumn" text="Cantitate Necesară" prefWidth="120"/>
+                        <TableColumn fx:id="recipeUnitColumn" text="Unitate" prefWidth="80"/>
+                        <TableColumn fx:id="recipeAvailableColumn" text="Stoc Disponibil" prefWidth="120"/>
+                        <TableColumn fx:id="recipeActionsColumn" text="Acțiuni" prefWidth="100"/>
+                    </columns>
+                </TableView>
+            </VBox>
+            
+            <!-- Production History -->
+            <VBox spacing="10">
+                <HBox alignment="CENTER_LEFT" spacing="10">
+                    <Label text="Istoric Producție" styleClass="label-subtitle"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Button text="🔄 Reîncarcă" onAction="#loadProductionHistory" styleClass="button"/>
+                </HBox>
+                
+                <TableView fx:id="productionHistoryTable" VBox.vgrow="ALWAYS">
+                    <columns>
+                        <TableColumn fx:id="historyDateColumn" text="Data" prefWidth="120"/>
+                        <TableColumn fx:id="historyProductColumn" text="Produs" prefWidth="150"/>
+                        <TableColumn fx:id="historyQuantityColumn" text="Cantitate" prefWidth="100"/>
+                        <TableColumn fx:id="historyStatusColumn" text="Status" prefWidth="100"/>
+                    </columns>
+                </TableView>
+            </VBox>
+        </SplitPane>
+    </center>
+    
+    <bottom>
+        <HBox spacing="15" alignment="CENTER_LEFT" padding="10">
+            <Label text="Informații Producție:" styleClass="label-subtitle"/>
+            <Label fx:id="productionInfoLabel" text="Selectați un produs pentru a începe producția" styleClass="label-muted"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Button text="📊 Raport Producție" onAction="#showProductionReport" styleClass="button, primary"/>
+        </HBox>
+    </bottom>
+    
+</BorderPane>

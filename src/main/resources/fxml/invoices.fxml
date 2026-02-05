@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.geometry.Insets?>
+
+<VBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.bakerymanager.controller.InvoicesController" spacing="20">
+    
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+    
+    <!-- Header -->
+    <HBox alignment="CENTER_LEFT" spacing="15">
+        <Label text="Gestiune Facturi SPV" styleClass="label-title"/>
+        <Region HBox.hgrow="ALWAYS"/>
+        
+        <Button text="📥 Import SPV" onAction="#importSPVInvoice" styleClass="button, success"/>
+        <Button text="➕ Manuală" onAction="#createManualInvoice" styleClass="button, primary"/>
+    </HBox>
+    
+    <!-- Statistics -->
+    <HBox spacing="15" alignment="CENTER">
+        <VBox styleClass="form-pane" spacing="10" prefWidth="200">
+            <Label text="Total Facturi" styleClass="label-subtitle"/>
+            <Label fx:id="totalInvoicesLabel" text="0" styleClass="label-title"/>
+        </VBox>
+        
+        <VBox styleClass="form-pane" spacing="10" prefWidth="200">
+            <Label text="Facturi SPV" styleClass="label-subtitle"/>
+            <Label fx:id="spvInvoicesLabel" text="0" styleClass="label-title"/>
+        </VBox>
+        
+        <VBox styleClass="form-pane" spacing="10" prefWidth="200">
+            <Label text="Valoare Totală" styleClass="label-subtitle"/>
+            <Label fx:id="totalValueLabel" text="0.00 lei" styleClass="label-title"/>
+        </VBox>
+    </HBox>
+    
+    <!-- Invoices Table -->
+    <TableView fx:id="invoicesTable" VBox.vgrow="ALWAYS">
+        <columns>
+            <TableColumn fx:id="invoiceNumberColumn" text="Număr Factură" prefWidth="150"/>
+            <TableColumn fx:id="supplierColumn" text="Furnizor" prefWidth="200"/>
+            <TableColumn fx:id="dateColumn" text="Data" prefWidth="120"/>
+            <TableColumn fx:id="totalColumn" text="Total" prefWidth="100"/>
+            <TableColumn fx:id="spvColumn" text="SPV" prefWidth="60"/>
+            <TableColumn fx:id="actionsColumn" text="Acțiuni" prefWidth="120"/>
+        </columns>
+    </TableView>
+    
+</VBox>

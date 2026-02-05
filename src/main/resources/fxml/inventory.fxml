@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.geometry.Insets?>
+
+<VBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.bakerymanager.controller.InventoryController" spacing="20">
+    
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+    
+    <!-- Header -->
+    <HBox alignment="CENTER_LEFT" spacing="15">
+        <Label text="Gestiune Stocuri" styleClass="label-title"/>
+        <Region HBox.hgrow="ALWAYS"/>
+        
+        <TextField fx:id="searchField" promptText="Caută ingredient..." prefWidth="250"/>
+        <Button text="🔍 Caută" onAction="#searchIngredients" styleClass="button, primary"/>
+        <Button text="➕ Adaugă Ingredient" onAction="#showAddIngredientDialog" styleClass="button, success"/>
+    </HBox>
+    
+    <!-- Statistics Cards -->
+    <HBox spacing="15" alignment="CENTER">
+        <VBox styleClass="form-pane" spacing="10" prefWidth="200">
+            <Label text="Total Ingrediente" styleClass="label-subtitle"/>
+            <Label fx:id="totalIngredientsLabel" text="0" styleClass="label-title"/>
+        </VBox>
+        
+        <VBox styleClass="form-pane" spacing="10" prefWidth="200">
+            <Label text="Stocuri Scăzute" styleClass="label-subtitle"/>
+            <Label fx:id="lowStockLabel" text="0" styleClass="label-title" textFill="red"/>
+        </VBox>
+        
+        <VBox styleClass="form-pane" spacing="10" prefWidth="200">
+            <Label text="Valoare Totală Stoc" styleClass="label-subtitle"/>
+            <Label fx:id="totalValueLabel" text="0.00 lei" styleClass="label-title"/>
+        </VBox>
+        
+        <Region HBox.hgrow="ALWAYS"/>
+        
+        <Button text="📥 Import SPV" onAction="#importSPVInvoice" styleClass="button, primary"/>
+    </HBox>
+    
+    <!-- Ingredients Table -->
+    <TableView fx:id="ingredientsTable" VBox.vgrow="ALWAYS">
+        <columns>
+            <TableColumn fx:id="idColumn" text="ID" prefWidth="50"/>
+            <TableColumn fx:id="nameColumn" text="Nume Ingredient" prefWidth="200"/>
+            <TableColumn fx:id="unitColumn" text="Unitate" prefWidth="80"/>
+            <TableColumn fx:id="stockColumn" text="Stoc Curent" prefWidth="100"/>
+            <TableColumn fx:id="minStockColumn" text="Stoc Minim" prefWidth="100"/>
+            <TableColumn fx:id="priceColumn" text="Preț Ultima Achiziție" prefWidth="120"/>
+            <TableColumn fx:id="totalValueColumn" text="Valoare Totală" prefWidth="120"/>
+            <TableColumn fx:id="actionsColumn" text="Acțiuni" prefWidth="150"/>
+        </columns>
+    </TableView>
+    
+    <!-- Pagination -->
+    <HBox alignment="CENTER">
+        <Pagination fx:id="pagination" pageCount="1" currentPageIndex="0"/>
+    </HBox>
+    
+</VBox>

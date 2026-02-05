@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.geometry.Insets?>
+
+<VBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.bakerymanager.controller.SettingsController" spacing="20">
+    
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+    
+    <!-- Header -->
+    <Label text="Setări Aplicație" styleClass="label-title"/>
+    
+    <!-- Settings Tabs -->
+    <TabPane VBox.vgrow="ALWAYS">
+        <Tab text="General">
+            <VBox spacing="20" padding="20">
+                <GridPane hgap="15" vgap="10">
+                    <Label text="Nume Companie:" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                    <TextField fx:id="companyNameField" GridPane.rowIndex="0" GridPane.columnIndex="1" prefWidth="300"/>
+                    
+                    <Label text="CUI:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                    <TextField fx:id="cuiField" GridPane.rowIndex="1" GridPane.columnIndex="1" prefWidth="300"/>
+                    
+                    <Label text="Adresă:" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                    <TextField fx:id="addressField" GridPane.rowIndex="2" GridPane.columnIndex="1" prefWidth="300"/>
+                    
+                    <Label text="Telefon:" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+                    <TextField fx:id="phoneField" GridPane.rowIndex="3" GridPane.columnIndex="1" prefWidth="300"/>
+                    
+                    <Label text="Email:" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
+                    <TextField fx:id="emailField" GridPane.rowIndex="4" GridPane.columnIndex="1" prefWidth="300"/>
+                </GridPane>
+            </VBox>
+        </Tab>
+        
+        <Tab text="Stocuri">
+            <VBox spacing="20" padding="20">
+                <GridPane hgap="15" vgap="10">
+                    <Label text="Alertă Stoc Minim (%):" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                    <TextField fx:id="stockAlertField" GridPane.rowIndex="0" GridPane.columnIndex="1" prefWidth="100"/>
+                    
+                    <Label text="Unitate Masură Implicită:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                    <ComboBox fx:id="defaultUnitCombo" GridPane.rowIndex="1" GridPane.columnIndex="1" prefWidth="150"/>
+                    
+                    <Label text="Zecimale Prețuri:" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                    <ComboBox fx:id="priceDecimalsCombo" GridPane.rowIndex="2" GridPane.columnIndex="1" prefWidth="100"/>
+                </GridPane>
+            </VBox>
+        </Tab>
+        
+        <Tab text="Vânzări">
+            <VBox spacing="20" padding="20">
+                <GridPane hgap="15" vgap="10">
+                    <Label text="Moneda Implicită:" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                    <TextField fx:id="currencyField" GridPane.rowIndex="0" GridPane.columnIndex="1" prefWidth="100"/>
+                    
+                    <Label text="TVA (%):" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                    <TextField fx:id="tvaField" GridPane.rowIndex="1" GridPane.columnIndex="1" prefWidth="100"/>
+                    
+                    <Label text="Bon Fiscal Automat:" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                    <CheckBox fx:id="autoReceiptCheck" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+                </GridPane>
+            </VBox>
+        </Tab>
+        
+        <Tab text="Backup">
+            <VBox spacing="20" padding="20">
+                <GridPane hgap="15" vgap="10">
+                    <Label text="Backup Automat:" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                    <CheckBox fx:id="autoBackupCheck" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+                    
+                    <Label text="Frecvență Backup:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                    <ComboBox fx:id="backupFrequencyCombo" GridPane.rowIndex="1" GridPane.columnIndex="1" prefWidth="150"/>
+                    
+                    <Label text="Locație Backup:" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                    <HBox spacing="10" GridPane.rowIndex="2" GridPane.columnIndex="1">
+                        <TextField fx:id="backupLocationField" prefWidth="300" editable="false"/>
+                        <Button text="Alege" onAction="#chooseBackupLocation" styleClass="button, primary"/>
+                    </HBox>
+                </GridPane>
+                
+                <Separator/>
+                
+                <HBox spacing="15" alignment="CENTER_LEFT">
+                    <Button text="💾 Salvează Setări" onAction="#saveSettings" styleClass="button, success"/>
+                    <Button text="🔄 Restaurează Default" onAction="#restoreDefaults" styleClass="button"/>
+                    <Button text="💾 Backup Acum" onAction="#backupNow" styleClass="button, primary"/>
+                </HBox>
+            </VBox>
+        </Tab>
+    </TabPane>
+    
+</VBox>

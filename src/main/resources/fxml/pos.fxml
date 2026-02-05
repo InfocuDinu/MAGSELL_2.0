@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.geometry.Insets?>
+
+<BorderPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.bakerymanager.controller.POSController">
+    
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+    
+    <top>
+        <VBox spacing="10">
+            <HBox alignment="CENTER_LEFT" spacing="15">
+                <Label text="Punct de Vânzare (POS)" styleClass="label-title"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                
+                <TextField fx:id="searchProductField" promptText="Caută produs..." prefWidth="200"/>
+                <Label fx:id="currentTimeLabel" styleClass="status-label"/>
+            </HBox>
+            
+            <!-- Category Filter -->
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <Label text="Categorii:" styleClass="label-subtitle"/>
+                <ComboBox fx:id="categoryComboBox" promptText="Toate produsele" prefWidth="150"/>
+                <Button text="🔄 Reîncarcă Produse" onAction="#loadProducts" styleClass="button, primary"/>
+            </HBox>
+        </VBox>
+    </top>
+    
+    <center>
+        <SplitPane dividerPositions="0.7" orientation="HORIZONTAL">
+            <!-- Product Grid -->
+            <VBox spacing="10">
+                <ScrollPane fitToWidth="true" hbarPolicy="NEVER">
+                    <TilePane fx:id="productTilePane" hgap="10" vgap="10" prefColumns="4">
+                        <!-- Product buttons will be added dynamically -->
+                    </TilePane>
+                </ScrollPane>
+            </VBox>
+            
+            <!-- Cart and Payment -->
+            <VBox spacing="10" prefWidth="400">
+                <!-- Cart -->
+                <VBox styleClass="cart-view" spacing="10" VBox.vgrow="ALWAYS">
+                    <HBox alignment="CENTER_LEFT" spacing="10">
+                        <Label text="Coș de Cumpărături" styleClass="label-subtitle"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <Button text="🗑️ Golește Coș" onAction="#clearCart" styleClass="button, danger"/>
+                    </HBox>
+                    
+                    <TableView fx:id="cartTable" VBox.vgrow="ALWAYS">
+                        <columns>
+                            <TableColumn fx:id="cartProductColumn" text="Produs" prefWidth="150"/>
+                            <TableColumn fx:id="cartQuantityColumn" text="Cantitate" prefWidth="80"/>
+                            <TableColumn fx:id="cartPriceColumn" text="Preț Unitar" prefWidth="80"/>
+                            <TableColumn fx:id="cartTotalColumn" text="Total" prefWidth="80"/>
+                            <TableColumn fx:id="cartActionsColumn" text="Acțiuni" prefWidth="60"/>
+                        </columns>
+                    </TableView>
+                    
+                    <!-- Cart Summary -->
+                    <GridPane hgap="10" vgap="5">
+                        <Label text="Produse:" GridPane.rowIndex="0" GridPane.columnIndex="0" styleClass="label-muted"/>
+                        <Label fx:id="totalItemsLabel" text="0" GridPane.rowIndex="0" GridPane.columnIndex="1" styleClass="label-subtitle"/>
+                        
+                        <Label text="Total:" GridPane.rowIndex="1" GridPane.columnIndex="0" styleClass="label-muted"/>
+                        <Label fx:id="totalAmountLabel" text="0.00 lei" GridPane.rowIndex="1" GridPane.columnIndex="1" styleClass="label-title"/>
+                    </GridPane>
+                </VBox>
+                
+                <!-- Payment Section -->
+                <VBox styleClass="form-pane" spacing="15" padding="15">
+                    <Label text="Plată" styleClass="label-subtitle"/>
+                    
+                    <GridPane hgap="10" vgap="10">
+                        <Label text="Metodă plată:" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                        <ComboBox fx:id="paymentMethodCombo" GridPane.rowIndex="0" GridPane.columnIndex="1" prefWidth="150"/>
+                        
+                        <Label text="Sumă primită:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                        <TextField fx:id="amountReceivedField" GridPane.rowIndex="1" GridPane.columnIndex="1" prefWidth="150"/>
+                        
+                        <Label text="Rest:" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                        <Label fx:id="changeLabel" text="0.00 lei" GridPane.rowIndex="2" GridPane.columnIndex="1" styleClass="label-subtitle"/>
+                    </GridPane>
+                    
+                    <HBox spacing="10" alignment="CENTER">
+                        <Button text="💳 Încasează" onAction="#processPayment" styleClass="button, success" prefWidth="120"/>
+                        <Button text="🧾 Bon Fiscal" onAction="#printReceipt" styleClass="button, primary" prefWidth="120"/>
+                    </HBox>
+                </VBox>
+            </VBox>
+        </SplitPane>
+    </center>
+    
+    <bottom>
+        <HBox spacing="15" alignment="CENTER_LEFT" padding="10">
+            <Label text="Status POS:" styleClass="label-subtitle"/>
+            <Label fx:id="posStatusLabel" text="Gata de vânzare" styleClass="label-muted"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            
+            <Label text="Vânzări azi:" styleClass="label-subtitle"/>
+            <Label fx:id="dailySalesLabel" text="0.00 lei" styleClass="label-title"/>
+            
+            <Button text="📊 Raport Zilnic" onAction="#showDailyReport" styleClass="button, primary"/>
+        </HBox>
+    </bottom>
+    
+</BorderPane>

@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.geometry.Insets?>
+
+<BorderPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.bakerymanager.controller.MainController">
+    
+    <!-- Top Header -->
+    <top>
+        <VBox styleClass="header">
+            <HBox alignment="CENTER_LEFT" spacing="20">
+                <padding>
+                    <Insets top="10" right="20" bottom="10" left="20"/>
+                </padding>
+                <Label text="BakeryManager Pro" styleClass="header-label"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label fx:id="dateTimeLabel" styleClass="status-label"/>
+                <Label fx:id="userLabel" text="Admin" styleClass="status-label"/>
+            </HBox>
+        </VBox>
+    </top>
+    
+    <!-- Left Sidebar Menu -->
+    <left>
+        <VBox styleClass="sidebar" spacing="10" prefWidth="200">
+            <padding>
+                <Insets top="20" right="10" bottom="20" left="10"/>
+            </padding>
+            
+            <Label text="Meniu Principal" styleClass="label-title"/>
+            
+            <Button text="📊 Dashboard" onAction="#showDashboard" styleClass="menu-button"/>
+            <Button text="📦 Gestiune Stocuri" onAction="#showInventory" styleClass="menu-button"/>
+            <Button text="🏭 Producție" onAction="#showProduction" styleClass="menu-button"/>
+            <Button text="💰 Punct de Vânzare (POS)" onAction="#showPOS" styleClass="menu-button"/>
+            
+            <Separator/>
+            
+            <Label text="Administrare" styleClass="label-subtitle"/>
+            <Button text="🧾 Facturi SPV" onAction="#showInvoices" styleClass="menu-button"/>
+            <Button text="📈 Rapoarte" onAction="#showReports" styleClass="menu-button"/>
+            <Button text="⚙️ Setări" onAction="#showSettings" styleClass="menu-button"/>
+            
+            <Region VBox.vgrow="ALWAYS"/>
+            
+            <Button text="🚪 Ieșire" onAction="#exitApplication" styleClass="button, danger"/>
+        </VBox>
+    </left>
+    
+    <!-- Main Content Area -->
+    <center>
+        <StackPane fx:id="contentPane" styleClass="content-pane">
+            <Label text="Bun venit în BakeryManager Pro!" 
+                   styleClass="label-title" 
+                   textAlignment="CENTER"/>
+        </StackPane>
+    </center>
+    
+    <!-- Bottom Status Bar -->
+    <bottom>
+        <HBox styleClass="status-bar" alignment="CENTER_LEFT" spacing="15">
+            <padding>
+                <Insets top="5" right="15" bottom="5" left="15"/>
+            </padding>
+            <Label fx:id="statusLabel" text="Aplicație pregătită" styleClass="status-label"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Label fx:id="connectionStatusLabel" text="✅ Conectat la baza de date" styleClass="status-label"/>
+        </HBox>
+    </bottom>
+    
+</BorderPane>
