@@ -4,7 +4,7 @@
 <?import javafx.scene.control.*?>
 <?import javafx.geometry.Insets?>
 
-<VBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+<VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.bakerymanager.controller.ReportsController" spacing="20">
     
     <padding>
@@ -26,7 +26,10 @@
     </VBox>
     
     <!-- Report Content -->
-    <VBox styleClass="form-pane" spacing="15" VBox.vgrow="ALWAYS" padding="20">
+    <VBox styleClass="form-pane" spacing="15" VBox.vgrow="ALWAYS">
+        <padding>
+            <Insets top="20" right="20" bottom="20" left="20"/>
+        </padding>
         <Label fx:id="reportTitleLabel" text="Selectați un tip de raport" styleClass="label-subtitle"/>
         
         <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS">
@@ -37,7 +40,7 @@
         <HBox spacing="10" alignment="CENTER_RIGHT">
             <Button text="📥 Export PDF" onAction="#exportPDF" styleClass="button, primary"/>
             <Button text="📄 Printează" onAction="#printReport" styleClass="button"/>
-            <Button text="📧 Trimite Email" onAction="sendEmail" styleClass="button, success"/>
+            <Button text="📧 Trimite Email" onAction="#sendEmail" styleClass="button, success"/>
         </HBox>
     </VBox>
     

@@ -16,7 +16,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class BakeryApplication extends Application {
     
-    private ConfigurableApplicationContext context;
+    private static ConfigurableApplicationContext context;
     private Parent root;
     
     @Override
@@ -51,5 +51,9 @@ public class BakeryApplication extends Application {
     
     public static void main(String[] args) {
         launch(args);
+    }
+    
+    public static ConfigurableApplicationContext getApplicationContext() {
+        return context;
     }
 }

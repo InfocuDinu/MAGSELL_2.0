@@ -54,10 +54,9 @@ public class MainController {
     }
     
     @FXML
-    public void loadDashboard() {
+    public void showDashboard() {
         try {
-            Parent dashboard = FXMLLoader.load(getClass().getResource("/fxml/dashboard.fxml"));
-            contentPane.getChildren().setAll(dashboard);
+            loadView("/fxml/dashboard.fxml");
             statusLabel.setText("Dashboard încărcat");
         } catch (IOException e) {
             System.err.println("Error loading dashboard: " + e.getMessage());
@@ -139,7 +138,9 @@ public class MainController {
     }
     
     private void loadView(String fxmlPath) throws IOException {
-        Parent view = FXMLLoader.load(getClass().getResource(fxmlPath));
+        FXMLLoader loader = new FXMLLoader(getClass().getResource(fxmlPath));
+        loader.setControllerFactory(com.bakerymanager.BakeryApplication.getApplicationContext()::getBean);
+        Parent view = loader.load();
         contentPane.getChildren().setAll(view);
     }
     

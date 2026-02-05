@@ -12,8 +12,6 @@ import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.GridPane;
-import javafx.scene.layout.TilePane;
-import javafx.scene.text.Font;
 import org.springframework.stereotype.Controller;
 
 import java.math.BigDecimal;
@@ -21,7 +19,6 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 @Controller
 public class ProductionController {
@@ -202,8 +199,14 @@ public class ProductionController {
         }
     }
     
-    private void loadProductionHistory() {
+    private void refreshProductionHistory() {
         productionHistory.clear();
+    }
+
+    @FXML
+    public void loadProductionHistory() {
+        refreshProductionHistory();
+        productionStatusLabel.setText("Istoric actualizat");
     }
     
     @FXML

@@ -37,6 +37,9 @@ public class Sale {
     @Column(name = "notes")
     private String notes;
     
+    @Column(name = "invoice_number", unique = true)
+    private String invoiceNumber;
+    
     @OneToMany(mappedBy = "sale", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<SaleItem> saleItems;
     
@@ -61,6 +64,9 @@ public class Sale {
         }
         if (changeAmount == null) {
             changeAmount = BigDecimal.ZERO;
+        }
+        if (invoiceNumber == null) {
+            invoiceNumber = "INV-" + System.currentTimeMillis();
         }
     }
     
@@ -104,6 +110,9 @@ public class Sale {
     
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
+    
+    public String getInvoiceNumber() { return invoiceNumber; }
+    public void setInvoiceNumber(String invoiceNumber) { this.invoiceNumber = invoiceNumber; }
     
     public List<SaleItem> getSaleItems() { return saleItems; }
     public void setSaleItems(List<SaleItem> saleItems) { this.saleItems = saleItems; }

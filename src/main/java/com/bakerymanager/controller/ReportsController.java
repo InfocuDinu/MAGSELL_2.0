@@ -11,6 +11,7 @@ import org.springframework.stereotype.Controller;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 @Controller
@@ -92,7 +93,7 @@ public class ReportsController {
     
     private void generateStockReport(StringBuilder report) {
         report.append("=== RAPORT STOCURI ===\n");
-        report.append("Generat la: ").append(LocalDate.now().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"))).append("\n\n");
+        report.append("Generat la: ").append(LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"))).append("\n\n");
         
         report.append("PRODUSE:\n");
         report.append("----------------------------------------\n");
