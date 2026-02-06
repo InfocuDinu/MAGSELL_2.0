@@ -12,6 +12,9 @@ import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.VBox;
+import javafx.geometry.Insets;
+import javafx.beans.property.SimpleObjectProperty;
 import org.springframework.stereotype.Controller;
 
 import java.math.BigDecimal;
@@ -207,6 +210,19 @@ public class ProductionController {
     public void loadProductionHistory() {
         refreshProductionHistory();
         productionStatusLabel.setText("Istoric actualizat");
+    }
+    
+    @FXML
+    public void refreshProducts() {
+        loadProducts();
+        productionStatusLabel.setText("Produse reîncărcate");
+    }
+    
+    @FXML
+    public void createNewProduct() {
+        System.out.println("Butonul Produs Nou a fost apăsat!");
+        showSuccessMessage("Funcționalitate de creare produs nou va fi implementată!");
+        // TODO: Implementați dialogul pentru creare produs nou cu ingrediente
     }
     
     @FXML

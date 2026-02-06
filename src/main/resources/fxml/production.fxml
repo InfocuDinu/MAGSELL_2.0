@@ -14,24 +14,25 @@
     <top>
         <VBox spacing="15">
             <HBox alignment="CENTER_LEFT" spacing="15">
-                <Label text="Modul Producție" styleClass="label-title"/>
+                <Label text="Modul Producție"/>
                 <Region HBox.hgrow="ALWAYS"/>
                 
                 <ComboBox fx:id="productComboBox" promptText="Selectează Produs" prefWidth="200"/>
                 <TextField fx:id="quantityField" promptText="Cantitate" prefWidth="100"/>
-                <Button text="🏭 Producție" onAction="#executeProduction" styleClass="button, success"/>
-                <Button text="📋 Verifică Stoc" onAction="#checkStock" styleClass="button, primary"/>
+                <Button text="🏭 Producție" onAction="#executeProduction"/>
+                <Button text="📋 Verifică Stoc" onAction="#checkStock"/>
+                <Button text="➕ Produs Nou" onAction="#createNewProduct"/>
             </HBox>
             
             <!-- Production Status -->
-            <HBox styleClass="form-pane" spacing="20" alignment="CENTER_LEFT">
+            <HBox spacing="20" alignment="CENTER_LEFT">
                 <padding>
                     <Insets top="10" right="10" bottom="10" left="10"/>
                 </padding>
-                <Label text="Status Producție:" styleClass="label-subtitle"/>
-                <Label fx:id="productionStatusLabel" text="Gata" styleClass="label-muted"/>
+                <Label text="Status Producție:"/>
+                <Label fx:id="productionStatusLabel" text="Gata"/>
                 <Region HBox.hgrow="ALWAYS"/>
-                <Label fx:id="stockStatusLabel" text="Stocuri OK" styleClass="label-muted"/>
+                <Label fx:id="stockStatusLabel" text="Stocuri OK"/>
             </HBox>
         </VBox>
     </top>
@@ -41,10 +42,10 @@
             <!-- Recipe Management -->
             <VBox spacing="10">
                 <HBox alignment="CENTER_LEFT" spacing="10">
-                    <Label text="Rețetar Produs" styleClass="label-subtitle"/>
+                    <Label text="Rețetar Produs"/>
                     <Region HBox.hgrow="ALWAYS"/>
-                    <Button text="➕ Adaugă Ingredient" onAction="#addRecipeItem" styleClass="button, primary"/>
-                    <Button text="📄 Rețetă Nouă" onAction="#createNewRecipe" styleClass="button, success"/>
+                    <Button text="➕ Adaugă Ingredient" onAction="#addRecipeItem"/>
+                    <Button text="📄 Rețetă Nouă" onAction="#createNewRecipe"/>
                 </HBox>
                 
                 <TableView fx:id="recipeTable" VBox.vgrow="ALWAYS">
@@ -61,9 +62,9 @@
             <!-- Production History -->
             <VBox spacing="10">
                 <HBox alignment="CENTER_LEFT" spacing="10">
-                    <Label text="Istoric Producție" styleClass="label-subtitle"/>
+                    <Label text="Istoric Producție"/>
                     <Region HBox.hgrow="ALWAYS"/>
-                    <Button text="🔄 Reîncarcă" onAction="#loadProductionHistory" styleClass="button"/>
+                    <Button text="🔄 Reîncarcă" onAction="#loadProductionHistory"/>
                 </HBox>
                 
                 <TableView fx:id="productionHistoryTable" VBox.vgrow="ALWAYS">
@@ -79,11 +80,15 @@
     </center>
     
     <bottom>
-        <HBox spacing="15" alignment="CENTER_LEFT" padding="10">
-            <Label text="Informații Producție:" styleClass="label-subtitle"/>
-            <Label fx:id="productionInfoLabel" text="Selectați un produs pentru a începe producția" styleClass="label-muted"/>
+        <HBox spacing="15" alignment="CENTER_LEFT">
+            <padding>
+                <Insets top="10" right="10" bottom="10" left="10"/>
+            </padding>
+            
+            <Label text="Informații Producție:"/>
+            <Label fx:id="productionInfoLabel" text="Selectați un produs pentru a începe producția"/>
             <Region HBox.hgrow="ALWAYS"/>
-            <Button text="📊 Raport Producție" onAction="#showProductionReport" styleClass="button, primary"/>
+            <Button text="Raport Producție" onAction="#showProductionReport"/>
         </HBox>
     </bottom>
     
