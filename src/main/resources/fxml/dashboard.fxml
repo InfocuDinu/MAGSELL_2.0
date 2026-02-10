@@ -4,57 +4,75 @@
 <?import javafx.scene.control.*?>
 <?import javafx.geometry.Insets?>
 
-<VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="com.bakerymanager.controller.DashboardController" spacing="20">
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.bakerymanager.controller.DashboardController"
+            stylesheets="@../css/style.css">
     
     <padding>
         <Insets top="20" right="20" bottom="20" left="20"/>
     </padding>
     
     <!-- Header -->
-    <Label text="Dashboard - Panou de Control" styleClass="label-title"/>
+    <top>
+        <VBox styleClass="header" spacing="20">
+            <Label text="Dashboard - Panou de Control" styleClass="label-title"/>
+        </VBox>
+    </top>
     
-    <!-- Statistics Cards -->
-    <HBox spacing="15" alignment="CENTER">
-        <VBox styleClass="form-pane" spacing="10" prefWidth="200">
-            <Label text="Produse în Stoc" styleClass="label-subtitle"/>
-            <Label fx:id="productsInStockLabel" text="0" styleClass="label-title"/>
+    <center>
+        <VBox spacing="30" alignment="CENTER">
+            
+            <!-- Statistics Cards -->
+            <HBox spacing="20" alignment="CENTER">
+                
+                <!-- Total Products Card -->
+                <VBox styleClass="dashboard-card" spacing="15" alignment="CENTER" prefWidth="200" prefHeight="150">
+                    <Label text="Produse" styleClass="dashboard-stat"/>
+                    <Label fx:id="totalProductsLabel" text="0" styleClass="dashboard-stat value"/>
+                </VBox>
+                
+                <!-- Low Stock Card -->
+                <VBox styleClass="dashboard-card" spacing="15" alignment="CENTER" prefWidth="200" prefHeight="150">
+                    <Label text="Stocuri Scăzute" styleClass="dashboard-stat"/>
+                    <Label fx:id="lowStockLabel" text="0" styleClass="dashboard-stat value"/>
+                </VBox>
+                
+                <!-- Today's Sales Card -->
+                <VBox styleClass="dashboard-card" spacing="15" alignment="CENTER" prefWidth="200" prefHeight="150">
+                    <Label text="Vânzări Astăzi" styleClass="dashboard-stat"/>
+                    <Label fx:id="todaySalesLabel" text="0 lei" styleClass="dashboard-stat value"/>
+                </VBox>
+                
+                <!-- Total Sales Card -->
+                <VBox styleClass="dashboard-card" spacing="15" alignment="CENTER" prefWidth="200" prefHeight="150">
+                    <Label text="Total Vânzări" styleClass="dashboard-stat"/>
+                    <Label fx:id="totalSalesLabel" text="0 lei" styleClass="dashboard-stat value"/>
+                </VBox>
+                
+            </HBox>
+            
+            <!-- Recent Activity -->
+            <VBox styleClass="card" spacing="20" prefHeight="200">
+                <Label text="Activitate Recente" styleClass="label-title"/>
+                <TableView fx:id="activityTable" styleClass="table-view"/>
+            </VBox>
+            
         </VBox>
-        
-        <VBox styleClass="form-pane" spacing="10" prefWidth="200">
-            <Label text="Ingrediente în Stoc" styleClass="label-subtitle"/>
-            <Label fx:id="ingredientsInStockLabel" text="0" styleClass="label-title"/>
-        </VBox>
-        
-        <VBox styleClass="form-pane" spacing="10" prefWidth="200">
-            <Label text="Stocuri Scăzute" styleClass="label-subtitle"/>
-            <Label fx:id="lowStockLabel" text="0" styleClass="label-title" textFill="orange"/>
-        </VBox>
-        
-        <VBox styleClass="form-pane" spacing="10" prefWidth="200">
-            <Label text="Vânzări Astăzi" styleClass="label-subtitle"/>
-            <Label fx:id="todaySalesLabel" text="0.00 lei" styleClass="label-title" textFill="green"/>
-        </VBox>
-    </HBox>
+    </center>
     
-    <!-- Quick Actions -->
-    <VBox spacing="15">
-        <Label text="Acțiuni Rapide" styleClass="label-subtitle"/>
-        <HBox spacing="15" alignment="CENTER">
-            <Button text="📦 Adaugă Stoc" onAction="#addStock" styleClass="button, primary" prefWidth="150"/>
-            <Button text="🏭 Producție Rapidă" onAction="#quickProduction" styleClass="button, success" prefWidth="150"/>
-            <Button text="💰 Vânzare Rapidă" onAction="#quickSale" styleClass="button, primary" prefWidth="150"/>
-            <Button text="📊 Raport Zilnic" onAction="#dailyReport" styleClass="button" prefWidth="150"/>
+    <!-- Bottom Status Bar -->
+    <bottom>
+        <HBox styleClass="status-bar" alignment="CENTER_LEFT" spacing="15">
+            <padding>
+                <Insets top="5" right="15" bottom="5" left="15"/>
+            </padding>
+            <Label fx:id="statusLabel" text="Sistem operațional" styleClass="status-label"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Label fx:id="lastUpdateLabel" text="Ultima actualizare: --" styleClass="status-label"/>
         </HBox>
-    </VBox>
+    </bottom>
     
-    <!-- Recent Activity -->
-    <VBox spacing="10" VBox.vgrow="ALWAYS">
-        <Label text="Activitate Recentă" styleClass="label-subtitle"/>
-        <TableView fx:id="activityTable" VBox.vgrow="ALWAYS">
-            <columns>
-                <TableColumn fx:id="activityDateColumn" text="Data" prefWidth="150"/>
-                <TableColumn fx:id="activityTypeColumn" text="Tip" prefWidth="120"/>
+</BorderPane>
                 <TableColumn fx:id="activityDescriptionColumn" text="Descriere" prefWidth="300"/>
                 <TableColumn fx:id="activityUserColumn" text="Utilizator" prefWidth="100"/>
             </columns>

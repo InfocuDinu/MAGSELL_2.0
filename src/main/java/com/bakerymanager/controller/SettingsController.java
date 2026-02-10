@@ -7,10 +7,13 @@ import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
 import org.springframework.stereotype.Controller;
 
-import java.io.File;
+import java.io.*;
+import java.util.Properties;
 
 @Controller
 public class SettingsController {
+    
+    private static final String CONFIG_FILE = "config.properties";
     
     @FXML
     private TextField companyNameField;
@@ -57,7 +60,7 @@ public class SettingsController {
     @FXML
     public void initialize() {
         setupComboBoxes();
-        loadDefaultSettings();
+        loadSettings();
         System.out.println("Settings controller initialized");
     }
     
@@ -70,6 +73,50 @@ public class SettingsController {
         
         backupFrequencyCombo.getItems().addAll("Zilnic", "Săptămânal", "Lunar");
         backupFrequencyCombo.setValue("Zilnic");
+    }
+    
+    private void loadSettings() {
+        Properties props = new Properties();
+        File configFile = new File(CONFIG_FILE);
+        
+        if (configFile.exists()) {
+            try (InputStream input = new FileInputStream(configFile)) {
+                props.load(input);
+                
+                // Încărcăm valorile din fișier
+                companyNameField.setText(props.getProperty("company.name", "Patiseria Mea SRL"));
+                cuiField.setText(props.getProperty("company.cui", "RO12345678"));
+                addressField.setText(props.getProperty("company.address", "Str. Principală Nr. 1, București"));
+                phoneField.setText(props.getProperty("company.phone", "0211234567"));
+                emailField.setText(props.getProperty("company.email", "contact@patiseria.ro"));
+                
+                stockAlertField.setText(props.getProperty("stock.alert", "20"));
+                currencyField.setText(props.getProperty("currency", "RON"));
+                tvaField.setText(props.getProperty("tax.vat", "19"));
+                
+                autoReceiptCheck.setSelected(Boolean.parseBoolean(props.getProperty("auto.receipt", "true")));
+                autoBackupCheck.setSelected(Boolean.parseBoolean(props.getProperty("auto.backup", "true")));
+                
+                backupFrequencyCombo.setValue(props.getProperty("backup.frequency", "Zilnic"));
+                backupLocationField.setText(props.getProperty("backup.location", System.getProperty("user.home") + File.separator + "bakery_backups"));
+                
+                // Setăm unitatea implicită
+                String defaultUnit = props.getProperty("default.unit", "KG");
+                try {
+                    defaultUnitCombo.setValue(Ingredient.UnitOfMeasure.valueOf(defaultUnit));
+                } catch (IllegalArgumentException e) {
+                    defaultUnitCombo.setValue(Ingredient.UnitOfMeasure.KG);
+                }
+                
+                System.out.println("Settings loaded from " + CONFIG_FILE);
+                
+            } catch (IOException e) {
+                System.err.println("Error loading settings: " + e.getMessage());
+                loadDefaultSettings();
+            }
+        } else {
+            loadDefaultSettings();
+        }
     }
     
     private void loadDefaultSettings() {
@@ -105,8 +152,43 @@ public class SettingsController {
         try {
             validateSettings();
             
-            showSuccessMessage("Setările au fost salvate cu succes!");
-            System.out.println("Settings saved successfully");
+            Properties props = new Properties();
+            
+            // Salvăm toate setările în Properties
+            props.setProperty("company.name", companyNameField.getText().trim());
+            props.setProperty("company.cui", cuiField.getText().trim());
+            props.setProperty("company.address", addressField.getText().trim());
+            props.setProperty("company.phone", phoneField.getText().trim());
+            props.setProperty("company.email", emailField.getText().trim());
+            
+            props.setProperty("stock.alert", stockAlertField.getText().trim());
+            props.setProperty("currency", currencyField.getText().trim());
+            props.setProperty("tax.vat", tvaField.getText().trim());
+            
+            props.setProperty("auto.receipt", String.valueOf(autoReceiptCheck.isSelected()));
+            props.setProperty("auto.backup", String.valueOf(autoBackupCheck.isSelected()));
+            
+            props.setProperty("backup.frequency", backupFrequencyCombo.getValue());
+            props.setProperty("backup.location", backupLocationField.getText().trim());
+            
+            if (defaultUnitCombo.getValue() != null) {
+                props.setProperty("default.unit", defaultUnitCombo.getValue().name());
+            }
+            
+            // Creăm directorul pentru config dacă nu există
+            File configFile = new File(CONFIG_FILE);
+            File parentDir = configFile.getParentFile();
+            if (parentDir != null && !parentDir.exists()) {
+                parentDir.mkdirs();
+            }
+            
+            // Salvăm în fișier
+            try (OutputStream output = new FileOutputStream(configFile)) {
+                props.store(output, "Bakery Manager Settings - " + java.time.LocalDateTime.now());
+            }
+            
+            showSuccessMessage("Setările au fost salvate cu succes!\nFișier: " + configFile.getAbsolutePath());
+            System.out.println("Settings saved to " + CONFIG_FILE);
             
         } catch (Exception e) {
             System.err.println("Error saving settings: " + e.getMessage());

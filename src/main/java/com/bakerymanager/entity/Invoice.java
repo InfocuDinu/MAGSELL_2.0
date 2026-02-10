@@ -34,6 +34,21 @@ public class Invoice {
     @Column(name = "xml_file_path")
     private String xmlFilePath;
     
+    @Column(name = "import_date")
+    private LocalDateTime importDate;
+    
+    @Column(name = "source_file_name")
+    private String sourceFileName;
+    
+    @Column(name = "status")
+    private String status;
+    
+    @Column(name = "number_of_lines")
+    private Integer numberOfLines;
+    
+    @Column(name = "currency")
+    private String currency;
+    
     @OneToMany(mappedBy = "invoice", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<InvoiceLine> invoiceLines;
     
@@ -101,4 +116,19 @@ public class Invoice {
     
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    
+    public LocalDateTime getImportDate() { return importDate; }
+    public void setImportDate(LocalDateTime importDate) { this.importDate = importDate; }
+    
+    public String getSourceFileName() { return sourceFileName; }
+    public void setSourceFileName(String sourceFileName) { this.sourceFileName = sourceFileName; }
+    
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
+    
+    public Integer getNumberOfLines() { return numberOfLines; }
+    public void setNumberOfLines(Integer numberOfLines) { this.numberOfLines = numberOfLines; }
+    
+    public String getCurrency() { return currency; }
+    public void setCurrency(String currency) { this.currency = currency; }
 }

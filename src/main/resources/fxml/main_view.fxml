@@ -5,7 +5,8 @@
 <?import javafx.geometry.Insets?>
 
 <BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
-            fx:controller="com.bakerymanager.controller.MainController">
+            fx:controller="com.bakerymanager.controller.MainController"
+            stylesheets="@../css/style.css">
     
     <!-- Top Header -->
     <top>
