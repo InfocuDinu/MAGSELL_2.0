@@ -5,6 +5,8 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.control.Label;
 import javafx.scene.layout.StackPane;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
 
 import java.io.IOException;
@@ -13,6 +15,8 @@ import java.time.format.DateTimeFormatter;
 
 @Controller
 public class MainController {
+    
+    private static final Logger logger = LoggerFactory.getLogger(MainController.class);
     
     @FXML
     private Label dateTimeLabel;
@@ -35,7 +39,7 @@ public class MainController {
     public void initialize() {
         updateDateTime();
         startClock();
-        System.out.println("Main controller initialized successfully");
+        logger.info("Main controller initialized successfully");
     }
     
     private void startClock() {
@@ -132,7 +136,7 @@ public class MainController {
     
     @FXML
     public void exitApplication() {
-        System.out.println("Application exit requested by user");
+        logger.info("Application exit requested by user");
         javafx.application.Platform.exit();
         System.exit(0);
     }

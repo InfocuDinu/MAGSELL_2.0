@@ -10,6 +10,8 @@ import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.TilePane;
 import javafx.scene.text.Font;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
 
 import java.math.BigDecimal;
@@ -21,6 +23,8 @@ import java.util.Optional;
 
 @Controller
 public class POSController {
+    
+    private static final Logger logger = LoggerFactory.getLogger(POSController.class);
     
     private final ProductService productService;
     private final SaleService saleService;
@@ -120,7 +124,7 @@ public class POSController {
         loadProducts();
         startClock();
         updateCartSummary();
-        System.out.println("POS controller initialized");
+        logger.info("POS controller initialized");
     }
     
     private void setupPaymentMethods() {
@@ -357,7 +361,7 @@ public class POSController {
         } catch (NumberFormatException e) {
             showError("Sumă primită invalidă!");
         } catch (Exception e) {
-            System.err.println("Eroare la procesarea plății: " + e.getMessage());
+            logger.error("Error processing payment", e);
             showError("Eroare la procesarea plății: " + e.getMessage());
         }
     }
