@@ -45,6 +45,7 @@ public class SaleService {
         
         // Calculare total și creare items
         List<SaleItem> saleItems = new ArrayList<>();
+        List<Product> productsToUpdate = new ArrayList<>();
         BigDecimal totalAmount = BigDecimal.ZERO;
         
         for (CartItem cartItem : cartItems) {
@@ -62,7 +63,7 @@ public class SaleService {
             
             // Scădere stoc
             product.setCurrentStock(product.getCurrentStock().subtract(cartItem.getQuantity()));
-            productRepository.save(product);
+            productsToUpdate.add(product);
             
             // Creare SaleItem
             SaleItem saleItem = new SaleItem();
@@ -88,11 +89,12 @@ public class SaleService {
         // Salvare vânzare
         Sale savedSale = saleRepository.save(sale);
         
-        // Salvare items
+        // Batch save products and sale items
+        productRepository.saveAll(productsToUpdate);
         for (SaleItem item : saleItems) {
             item.setSale(savedSale);
-            saleItemRepository.save(item);
         }
+        saleItemRepository.saveAll(saleItems);
         
         System.out.println("Vânzare salvată cu succes: ID=" + savedSale.getId() + ", Total=" + savedSale.getTotalAmount());
         return savedSale;

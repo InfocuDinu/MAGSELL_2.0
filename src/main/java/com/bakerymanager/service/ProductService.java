@@ -130,4 +130,8 @@ public class ProductService {
         product.setIsActive(true);
         productRepository.save(product);
     }
+    
+    public long countAvailableProducts() {
+        return productRepository.countAvailableProducts();
+    }
 }

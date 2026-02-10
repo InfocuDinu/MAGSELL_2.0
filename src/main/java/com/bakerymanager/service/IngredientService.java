@@ -102,4 +102,12 @@ public class IngredientService {
         ingredient.setLastPurchasePrice(newPrice);
         ingredientRepository.save(ingredient);
     }
+    
+    public long countAvailableIngredients() {
+        return ingredientRepository.countAvailableIngredients();
+    }
+    
+    public long countLowStockIngredients() {
+        return ingredientRepository.countLowStockIngredients();
+    }
 }

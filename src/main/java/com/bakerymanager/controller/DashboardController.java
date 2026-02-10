@@ -93,9 +93,9 @@ public class DashboardController {
     }
     
     private void loadDashboardData() {
-        long productsInStock = productService.getAvailableProducts().size();
-        long ingredientsInStock = ingredientService.getAvailableIngredients().size();
-        long lowStockCount = ingredientService.getLowStockIngredients().size();
+        long productsInStock = productService.countAvailableProducts();
+        long ingredientsInStock = ingredientService.countAvailableIngredients();
+        long lowStockCount = ingredientService.countLowStockIngredients();
         
         productsInStockLabel.setText(String.valueOf(productsInStock));
         ingredientsInStockLabel.setText(String.valueOf(ingredientsInStock));
