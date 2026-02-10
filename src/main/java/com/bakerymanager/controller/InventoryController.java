@@ -13,9 +13,12 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.GridPane;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
 
 import java.io.File;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
@@ -23,6 +26,8 @@ import java.util.Optional;
 
 @Controller
 public class InventoryController {
+    
+    private static final Logger logger = LoggerFactory.getLogger(InventoryController.class);
     
     private final IngredientService ingredientService;
     private final InvoiceService invoiceService;
@@ -81,7 +86,7 @@ public class InventoryController {
         setupTable();
         loadIngredients();
         updateStatistics();
-        System.out.println("Inventory controller initialized");
+        logger.info("Inventory controller initialized");
     }
     
     private void setupTable() {
@@ -300,7 +305,7 @@ public class InventoryController {
                 alert.setContentText("Import SPV - funcționalitate în dezvoltare");
                 alert.show();
             } catch (Exception e) {
-                System.err.println("Error importing SPV invoice: " + e.getMessage());
+                logger.error("Error importing SPV invoice", e);
                 showError("Eroare la importarea facturii: " + e.getMessage());
             }
         }

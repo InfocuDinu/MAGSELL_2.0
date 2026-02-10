@@ -12,18 +12,26 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.math.BigDecimal;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.UUID;
 
 @Controller
 public class InvoicesController {
+    
+    private static final Logger logger = LoggerFactory.getLogger(InvoicesController.class);
     
     private final InvoiceService invoiceService;
     
@@ -68,7 +76,7 @@ public class InvoicesController {
         setupTable();
         loadInvoices();
         updateStatistics();
-        System.out.println("Invoices controller initialized");
+        logger.info("Invoices controller initialized");
     }
     
     private void setupTable() {
@@ -118,6 +126,21 @@ public class InvoicesController {
                 return; // Utilizatorul a anulat
             }
             
+            // Validate file exists and is readable
+            if (!selectedFile.exists() || !selectedFile.canRead()) {
+                showError("Fișierul nu există sau nu poate fi citit!");
+                logger.error("Selected file does not exist or cannot be read: {}", selectedFile.getPath());
+                return;
+            }
+            
+            // Validate file size (prevent DoS attacks with huge files)
+            long maxFileSize = 10 * 1024 * 1024; // 10MB
+            if (selectedFile.length() > maxFileSize) {
+                showError("Fișierul este prea mare (maxim 10MB)!");
+                logger.warn("File too large: {} bytes", selectedFile.length());
+                return;
+            }
+            
             // Citim și parsăm XML-ul
             XmlMapper xmlMapper = new XmlMapper();
             UBLInvoiceDto invoiceDto;
@@ -140,10 +163,13 @@ public class InvoicesController {
                 "Număr: " + invoice.getInvoiceNumber() + "\n" +
                 "Furnizor: " + invoice.getSupplierName() + "\n" +
                 "Valoare: " + String.format("%.2f lei", invoice.getTotalAmount()));
+            logger.info("SPV invoice imported successfully: {}", invoice.getInvoiceNumber());
             
+        } catch (IOException e) {
+            logger.error("IO error importing SPV invoice", e);
+            showError("Eroare la citirea fișierului: " + e.getMessage());
         } catch (Exception e) {
-            System.err.println("Error importing SPV invoice: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Error importing SPV invoice", e);
             showError("Eroare la importarea e-facturii: " + e.getMessage());
         }
     }
@@ -151,11 +177,13 @@ public class InvoicesController {
     private Invoice convertDtoToInvoice(UBLInvoiceDto dto, String fileName) {
         Invoice invoice = new Invoice();
         
-        // Număr factură
-        if (dto.getInvoiceNumber() != null) {
+        // Număr factură - use UUID for uniqueness
+        if (dto.getInvoiceNumber() != null && !dto.getInvoiceNumber().trim().isEmpty()) {
             invoice.setInvoiceNumber(dto.getInvoiceNumber());
         } else {
-            invoice.setInvoiceNumber("IMP_" + System.currentTimeMillis());
+            String uniqueId = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+            invoice.setInvoiceNumber("IMP_" + uniqueId);
+            logger.warn("Invoice number missing in XML, generated: IMP_{}", uniqueId);
         }
         
         // Data facturii
