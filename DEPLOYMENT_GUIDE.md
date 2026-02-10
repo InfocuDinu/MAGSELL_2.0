@@ -159,7 +159,7 @@ cp bakery.db backups/bakery_$(date +%Y%m%d).db
 ### Restore din Backup
 
 1. Opriți aplicația complet
-2. Redenumițbaza de date curentă:
+2. Redenumiți baza de date curentă:
    ```
    ren bakery.db bakery_old.db
    ```
@@ -259,7 +259,7 @@ java -Djavafx.platform=win -jar bakery-manager-1.0.0.jar
    - Nu commitați în git
    - Backup separat pentru configurare
 
-3. **Accesoperator:**
+3. **Acces operator:**
    - Parole unice pentru fiecare operator
    - Schimbare parolă periodic
    - Log all modifications
