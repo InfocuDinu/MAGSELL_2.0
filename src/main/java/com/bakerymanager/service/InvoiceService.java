@@ -6,6 +6,8 @@ import com.bakerymanager.entity.Ingredient;
 import com.bakerymanager.repository.InvoiceRepository;
 import com.bakerymanager.repository.InvoiceLineRepository;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,10 +18,13 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @Transactional
 public class InvoiceService {
+    
+    private static final Logger logger = LoggerFactory.getLogger(InvoiceService.class);
     
     private final InvoiceRepository invoiceRepository;
     private final InvoiceLineRepository invoiceLineRepository;
@@ -50,15 +55,19 @@ public class InvoiceService {
     @Transactional
     public Invoice importUBLInvoice(String filePath) throws IOException {
         try {
-            // Citire fișier XML (simulare - în realitate ar fi parsare UBL)
+            // Validare fișier XML
             File xmlFile = new File(filePath);
-            if (!xmlFile.exists()) {
-                throw new IOException("Fișierul nu există: " + filePath);
+            if (!xmlFile.exists() || !xmlFile.canRead()) {
+                logger.error("File does not exist or cannot be read: {}", filePath);
+                throw new IOException("Fișierul nu există sau nu poate fi citit: " + filePath);
             }
+            
+            // Generare număr unic pentru factură folosind UUID
+            String invoiceNumber = "INV-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
             
             // Creare factură (simulare date din XML)
             Invoice invoice = new Invoice();
-            invoice.setInvoiceNumber("INV-" + System.currentTimeMillis());
+            invoice.setInvoiceNumber(invoiceNumber);
             invoice.setSupplierName("Furnizor SPV");
             invoice.setInvoiceDate(LocalDateTime.now());
             invoice.setTotalAmount(BigDecimal.ZERO);
@@ -66,6 +75,7 @@ public class InvoiceService {
             
             // Salvare factură
             Invoice savedInvoice = invoiceRepository.save(invoice);
+            logger.info("Invoice imported successfully: {}", invoiceNumber);
             
             // Procesare linii factură (simulare)
             List<String> mockIngredients = List.of("Făină", "Zahăr", "Drojdie", "Ouă", "Lapte");
@@ -89,11 +99,11 @@ public class InvoiceService {
             // Salvare finală cu total actualizat
             savedInvoice = invoiceRepository.save(savedInvoice);
             
-            System.out.println("Factură SPV importată cu succes: " + savedInvoice.getInvoiceNumber());
+            logger.info("SPV invoice imported successfully: {}", savedInvoice.getInvoiceNumber());
             return savedInvoice;
             
         } catch (Exception e) {
-            System.err.println("Eroare la importul facturii SPV: " + e.getMessage());
+            logger.error("Error importing SPV invoice from file: {}", filePath, e);
             throw new IOException("Eroare la importul facturii SPV: " + e.getMessage(), e);
         }
     }
@@ -110,7 +120,8 @@ public class InvoiceService {
         ingredients = ingredientService.findByNameContainingIgnoreCase(ingredientName);
         
         if (!ingredients.isEmpty()) {
-            System.out.println("Ingredient găsit prin LIKE: " + ingredients.get(0).getName() + " pentru căutare: " + ingredientName);
+            logger.info("Ingredient found via LIKE search: {} for search term: {}", 
+                ingredients.get(0).getName(), ingredientName);
             return ingredients.get(0);
         }
         
@@ -125,10 +136,10 @@ public class InvoiceService {
         
         try {
             Ingredient saved = ingredientService.saveIngredient(newIngredient);
-            System.out.println("Ingredient creat automat: " + saved.getName() + " (necesită revizie)");
+            logger.warn("Ingredient created automatically (requires review): {}", saved.getName());
             return saved;
         } catch (Exception e) {
-            System.err.println("Eroare la crearea ingredientului: " + e.getMessage());
+            logger.error("Error creating ingredient: {}", ingredientName, e);
             throw new RuntimeException("Nu s-a putut crea ingredientul: " + ingredientName, e);
         }
     }
