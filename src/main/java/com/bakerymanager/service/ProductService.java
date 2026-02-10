@@ -32,6 +32,9 @@ public class ProductService {
     }
     
     public Optional<Product> getProductById(Long id) {
+        if (id == null) {
+            return Optional.empty();
+        }
         return productRepository.findById(id);
     }
     
@@ -44,6 +47,9 @@ public class ProductService {
     }
     
     public Product saveProduct(Product product) {
+        if (product == null) {
+            throw new IllegalArgumentException("Produsul nu poate fi null");
+        }
         return productRepository.save(product);
     }
     
@@ -58,7 +64,9 @@ public class ProductService {
     }
     
     public void deleteProduct(Long id) {
-        productRepository.deleteById(id);
+        if (id != null) {
+            productRepository.deleteById(id);
+        }
     }
     
     public List<Product> searchProducts(String searchTerm) {
@@ -70,6 +78,9 @@ public class ProductService {
     }
     
     public void addStock(Long productId, BigDecimal quantity) {
+        if (productId == null) {
+            throw new IllegalArgumentException("ID-ul produsului nu poate fi null");
+        }
         Product product = productRepository.findById(productId)
             .orElseThrow(() -> new RuntimeException("Product not found: " + productId));
         product.addStock(quantity);
@@ -77,6 +88,9 @@ public class ProductService {
     }
     
     public void removeStock(Long productId, BigDecimal quantity) {
+        if (productId == null) {
+            throw new IllegalArgumentException("ID-ul produsului nu poate fi null");
+        }
         Product product = productRepository.findById(productId)
             .orElseThrow(() -> new RuntimeException("Product not found: " + productId));
         
@@ -89,12 +103,18 @@ public class ProductService {
     }
     
     public boolean hasSufficientStock(Long productId, BigDecimal requiredQuantity) {
+        if (productId == null) {
+            throw new IllegalArgumentException("ID-ul produsului nu poate fi null");
+        }
         Product product = productRepository.findById(productId)
             .orElseThrow(() -> new RuntimeException("Product not found: " + productId));
         return product.hasSufficientStock(requiredQuantity);
     }
     
     public void deactivateProduct(Long id) {
+        if (id == null) {
+            throw new IllegalArgumentException("ID-ul produsului nu poate fi null");
+        }
         Product product = productRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Product not found: " + id));
         product.setIsActive(false);
@@ -102,6 +122,9 @@ public class ProductService {
     }
     
     public void activateProduct(Long id) {
+        if (id == null) {
+            throw new IllegalArgumentException("ID-ul produsului nu poate fi null");
+        }
         Product product = productRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Product not found: " + id));
         product.setIsActive(true);

@@ -21,16 +21,13 @@ public class SaleService {
     private final SaleRepository saleRepository;
     private final SaleItemRepository saleItemRepository;
     private final ProductRepository productRepository;
-    private final ProductionService productionService;
     
     public SaleService(SaleRepository saleRepository, 
                        SaleItemRepository saleItemRepository,
-                       ProductRepository productRepository,
-                       ProductionService productionService) {
+                       ProductRepository productRepository) {
         this.saleRepository = saleRepository;
         this.saleItemRepository = saleItemRepository;
         this.productRepository = productRepository;
-        this.productionService = productionService;
     }
     
     @Transactional
@@ -51,8 +48,12 @@ public class SaleService {
         BigDecimal totalAmount = BigDecimal.ZERO;
         
         for (CartItem cartItem : cartItems) {
-            Product product = productRepository.findById(cartItem.getProductId())
-                .orElseThrow(() -> new IllegalArgumentException("Produsul nu există: " + cartItem.getProductId()));
+            Long productId = cartItem.getProductId();
+            if (productId == null) {
+                throw new IllegalArgumentException("ID-ul produsului nu poate fi null");
+            }
+            Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new IllegalArgumentException("Produsul nu există: " + productId));
             
             // Verificare stoc
             if (product.getCurrentStock().compareTo(cartItem.getQuantity()) < 0) {
@@ -126,6 +127,9 @@ public class SaleService {
     }
     
     public Sale getSaleById(Long id) {
+        if (id == null) {
+            return null;
+        }
         return saleRepository.findById(id).orElse(null);
     }
     

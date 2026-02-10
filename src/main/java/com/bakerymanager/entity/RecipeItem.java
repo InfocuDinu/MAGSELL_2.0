@@ -45,4 +45,8 @@ public class RecipeItem {
     
     public BigDecimal getRequiredQuantity() { return requiredQuantity; }
     public void setRequiredQuantity(BigDecimal requiredQuantity) { this.requiredQuantity = requiredQuantity; }
+    
+    public Long getIngredientId() { 
+        return ingredient != null ? ingredient.getId() : null; 
+    }
 }
