@@ -14,6 +14,8 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
 import javafx.geometry.Insets;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
 
 import java.math.BigDecimal;
@@ -24,6 +26,8 @@ import java.util.Map;
 
 @Controller
 public class ProductionController {
+    
+    private static final Logger logger = LoggerFactory.getLogger(ProductionController.class);
     
     private final ProductionService productionService;
     private final ProductService productService;
@@ -119,7 +123,7 @@ public class ProductionController {
         setupProductionHistoryTable();
         loadProducts();
         loadProductionHistory();
-        System.out.println("Production controller initialized");
+        logger.info("Production controller initialized");
     }
     
     private void setupProductComboBox() {
@@ -165,7 +169,7 @@ public class ProductionController {
                     }
                 }
             } catch (Exception e) {
-                System.err.println("Eroare la afișare ingredient: " + e.getMessage());
+                logger.error("Error displaying ingredient", e);
             }
             return new javafx.beans.property.SimpleStringProperty("Ingredient necunoscut");
         });
@@ -184,7 +188,7 @@ public class ProductionController {
                     }
                 }
             } catch (Exception e) {
-                System.err.println("Eroare la afișare unitate: " + e.getMessage());
+                logger.error("Error displaying unit", e);
             }
             return new javafx.beans.property.SimpleStringProperty("-");
         });
@@ -201,7 +205,7 @@ public class ProductionController {
                     }
                 }
             } catch (Exception e) {
-                System.err.println("Eroare la afișare stoc: " + e.getMessage());
+                logger.error("Error displaying stock", e);
             }
             return new javafx.beans.property.SimpleObjectProperty<>(BigDecimal.ZERO);
         });
@@ -246,9 +250,9 @@ public class ProductionController {
     
     private void loadProducts() {
         List<Product> products = productService.getActiveProducts();
-        System.out.println("Produse disponibile: " + products.size());
+        logger.debug("Available products: {}", products.size());
         for (Product p : products) {
-            System.out.println("- " + p.getName() + " (Stoc: " + p.getPhysicalStock() + ", Preț: " + p.getSalePrice() + ")");
+            logger.debug("Product: {} (Stock: {}, Price: {})", p.getName(), p.getPhysicalStock(), p.getSalePrice());
         }
         productComboBox.setItems(FXCollections.observableArrayList(products));
     }
@@ -259,14 +263,14 @@ public class ProductionController {
             recipeItems.clear();
             
             // Debug: Afișăm ce am găsit
-            System.out.println("Rețetă pentru " + selectedProduct.getName() + ": " + items.size() + " ingrediente");
+            logger.debug("Recipe for {}: {} ingredients", selectedProduct.getName(), items.size());
             
             // Forțăm încărcarea ingredientelor pentru a evita lazy loading
             for (RecipeItem item : items) {
                 if (item.getIngredient() != null) {
-                    System.out.println("- " + item.getIngredient().getName() + ": " + item.getRequiredQuantity());
+                    logger.debug("Ingredient: {} : {}", item.getIngredient().getName(), item.getRequiredQuantity());
                 } else {
-                    System.out.println("- Ingredient null pentru ID: " + item.getIngredientId());
+                    logger.warn("Null ingredient for ID: {}", item.getIngredientId());
                 }
             }
             
@@ -449,9 +453,9 @@ public class ProductionController {
         
         ComboBox<Ingredient> ingredientCombo = new ComboBox<>();
         List<Ingredient> ingredients = ingredientService.getAllIngredients();
-        System.out.println("Ingrediente disponibile: " + ingredients.size());
+        logger.debug("Available ingredients: {}", ingredients.size());
         for (Ingredient ing : ingredients) {
-            System.out.println("- " + ing.getName() + " (Stoc: " + ing.getCurrentStock() + ")");
+            logger.debug("Ingredient: {} (Stock: {})", ing.getName(), ing.getCurrentStock());
         }
         ingredientCombo.setItems(FXCollections.observableArrayList(ingredients));
         ingredientCombo.setPromptText("Selectați ingredient");
@@ -749,9 +753,9 @@ public class ProductionController {
         
         ComboBox<Ingredient> ingredientCombo = new ComboBox<>();
         List<Ingredient> ingredients = ingredientService.getAllIngredients();
-        System.out.println("Ingrediente disponibile pentru rețetă: " + ingredients.size());
+        logger.debug("Ingredients available for recipe: {}", ingredients.size());
         for (Ingredient ing : ingredients) {
-            System.out.println("- " + ing.getName() + " (Stoc: " + ing.getCurrentStock() + ")");
+            logger.debug("Ingredient: {} (Stock: {})", ing.getName(), ing.getCurrentStock());
         }
         ingredientCombo.setItems(FXCollections.observableArrayList(ingredients));
         

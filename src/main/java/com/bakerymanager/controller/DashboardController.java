@@ -8,6 +8,8 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
 
 import java.time.LocalDateTime;
@@ -15,6 +17,8 @@ import java.time.format.DateTimeFormatter;
 
 @Controller
 public class DashboardController {
+    
+    private static final Logger logger = LoggerFactory.getLogger(DashboardController.class);
     
     private final ProductService productService;
     private final IngredientService ingredientService;
@@ -80,7 +84,7 @@ public class DashboardController {
     public void initialize() {
         setupActivityTable();
         loadDashboardData();
-        System.out.println("Dashboard controller initialized");
+        logger.info("Dashboard controller initialized");
     }
     
     private void setupActivityTable() {
@@ -93,9 +97,9 @@ public class DashboardController {
     }
     
     private void loadDashboardData() {
-        long productsInStock = productService.getAvailableProducts().size();
-        long ingredientsInStock = ingredientService.getAvailableIngredients().size();
-        long lowStockCount = ingredientService.getLowStockIngredients().size();
+        long productsInStock = productService.countAvailableProducts();
+        long ingredientsInStock = ingredientService.countAvailableIngredients();
+        long lowStockCount = ingredientService.countLowStockIngredients();
         
         productsInStockLabel.setText(String.valueOf(productsInStock));
         ingredientsInStockLabel.setText(String.valueOf(ingredientsInStock));

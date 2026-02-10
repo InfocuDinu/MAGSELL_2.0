@@ -1,2 +1,39 @@
 # Project exclude paths
 /target/
+
+# IDE
+/.idea/
+/.vscode/
+*.iml
+*.ipr
+*.iws
+
+# Build artifacts
+*.class
+*.jar
+*.war
+*.ear
+
+# Configuration files with sensitive data
+config.properties
+application-local.properties
+
+# Database files
+*.db
+*.db-journal
+
+# Logs
+logs/
+*.log
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# JavaFX SDK (too large)
+javafx-sdk/
+javafx-sdk.zip
+
+# Backup files
+backups/
+*.bak

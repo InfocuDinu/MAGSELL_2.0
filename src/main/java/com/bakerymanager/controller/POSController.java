@@ -10,6 +10,8 @@ import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.TilePane;
 import javafx.scene.text.Font;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
 
 import java.math.BigDecimal;
@@ -21,6 +23,8 @@ import java.util.Optional;
 
 @Controller
 public class POSController {
+    
+    private static final Logger logger = LoggerFactory.getLogger(POSController.class);
     
     private final ProductService productService;
     private final SaleService saleService;
@@ -84,6 +88,7 @@ public class POSController {
     private ObservableList<CartItem> cartItems = FXCollections.observableArrayList();
     private List<Product> availableProducts;
     private BigDecimal dailySales = BigDecimal.ZERO;
+    private BigDecimal cachedCartTotal = BigDecimal.ZERO;
     
     public static class CartItem {
         private Product product;
@@ -119,7 +124,7 @@ public class POSController {
         loadProducts();
         startClock();
         updateCartSummary();
-        System.out.println("POS controller initialized");
+        logger.info("POS controller initialized");
     }
     
     private void setupPaymentMethods() {
@@ -287,12 +292,16 @@ public class POSController {
     private void updateCartSummary() {
         totalItemsLabel.setText(String.valueOf(cartItems.size()));
         
-        BigDecimal total = cartItems.stream()
+        cachedCartTotal = cartItems.stream()
             .map(CartItem::getTotal)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
         
-        totalAmountLabel.setText(String.format("%.2f lei", total));
+        totalAmountLabel.setText(String.format("%.2f lei", cachedCartTotal));
         calculateChange();
+    }
+    
+    private BigDecimal getCartTotal() {
+        return cachedCartTotal;
     }
     
     @FXML
@@ -302,9 +311,7 @@ public class POSController {
             return;
         }
         
-        BigDecimal total = cartItems.stream()
-            .map(CartItem::getTotal)
-            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal total = getCartTotal();
         
         try {
             BigDecimal amountReceived = new BigDecimal(amountReceivedField.getText());
@@ -354,7 +361,7 @@ public class POSController {
         } catch (NumberFormatException e) {
             showError("Sumă primită invalidă!");
         } catch (Exception e) {
-            System.err.println("Eroare la procesarea plății: " + e.getMessage());
+            logger.error("Error processing payment", e);
             showError("Eroare la procesarea plății: " + e.getMessage());
         }
     }
@@ -429,9 +436,7 @@ public class POSController {
                 return;
             }
             
-            BigDecimal total = cartItems.stream()
-                .map(CartItem::getTotal)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal total = getCartTotal();
             
             BigDecimal received = new BigDecimal(amountReceivedField.getText());
             BigDecimal change = received.subtract(total);

@@ -5,6 +5,8 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.control.Label;
 import javafx.scene.layout.StackPane;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
 
 import java.io.IOException;
@@ -13,6 +15,8 @@ import java.time.format.DateTimeFormatter;
 
 @Controller
 public class MainController {
+    
+    private static final Logger logger = LoggerFactory.getLogger(MainController.class);
     
     @FXML
     private Label dateTimeLabel;
@@ -35,7 +39,7 @@ public class MainController {
     public void initialize() {
         updateDateTime();
         startClock();
-        System.out.println("Main controller initialized successfully");
+        logger.info("Main controller initialized successfully");
     }
     
     private void startClock() {
@@ -59,7 +63,7 @@ public class MainController {
             loadView("/fxml/dashboard.fxml");
             statusLabel.setText("Dashboard încărcat");
         } catch (IOException e) {
-            System.err.println("Error loading dashboard: " + e.getMessage());
+            logger.error("Error loading dashboard", e);
             statusLabel.setText("Eroare la încărcare dashboard");
         }
     }
@@ -70,7 +74,7 @@ public class MainController {
             loadView("/fxml/inventory.fxml");
             statusLabel.setText("Modul Gestiune Stocuri încărcat");
         } catch (IOException e) {
-            System.err.println("Error loading inventory: " + e.getMessage());
+            logger.error("Error loading inventory", e);
             showError("Eroare la încărcarea modulului de gestiune");
         }
     }
@@ -81,7 +85,7 @@ public class MainController {
             loadView("/fxml/production.fxml");
             statusLabel.setText("Modul Producție încărcat");
         } catch (IOException e) {
-            System.err.println("Error loading production: " + e.getMessage());
+            logger.error("Error loading production", e);
             showError("Eroare la încărcarea modulului de producție");
         }
     }
@@ -92,7 +96,7 @@ public class MainController {
             loadView("/fxml/pos.fxml");
             statusLabel.setText("Punct de Vânzare încărcat");
         } catch (IOException e) {
-            System.err.println("Error loading POS: " + e.getMessage());
+            logger.error("Error loading POS", e);
             showError("Eroare la încărcarea modulului POS");
         }
     }
@@ -103,7 +107,7 @@ public class MainController {
             loadView("/fxml/invoices.fxml");
             statusLabel.setText("Modul Facturi SPV încărcat");
         } catch (IOException e) {
-            System.err.println("Error loading invoices: " + e.getMessage());
+            logger.error("Error loading invoices", e);
             showError("Eroare la încărcarea modulului de facturi");
         }
     }
@@ -114,7 +118,7 @@ public class MainController {
             loadView("/fxml/reports.fxml");
             statusLabel.setText("Modul Rapoarte încărcat");
         } catch (IOException e) {
-            System.err.println("Error loading reports: " + e.getMessage());
+            logger.error("Error loading reports", e);
             showError("Eroare la încărcarea modulului de rapoarte");
         }
     }
@@ -125,14 +129,14 @@ public class MainController {
             loadView("/fxml/settings.fxml");
             statusLabel.setText("Modul Setări încărcat");
         } catch (IOException e) {
-            System.err.println("Error loading settings: " + e.getMessage());
+            logger.error("Error loading settings", e);
             showError("Eroare la încărcarea modulului de setări");
         }
     }
     
     @FXML
     public void exitApplication() {
-        System.out.println("Application exit requested by user");
+        logger.info("Application exit requested by user");
         javafx.application.Platform.exit();
         System.exit(0);
     }

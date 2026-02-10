@@ -24,4 +24,10 @@ public interface IngredientRepository extends JpaRepository<Ingredient, Long> {
     
     @Query("SELECT i FROM Ingredient i WHERE i.unitOfMeasure = :unitOfMeasure")
     List<Ingredient> findByUnitOfMeasure(@Param("unitOfMeasure") Ingredient.UnitOfMeasure unitOfMeasure);
+    
+    @Query("SELECT COUNT(i) FROM Ingredient i WHERE i.currentStock > 0")
+    long countAvailableIngredients();
+    
+    @Query("SELECT COUNT(i) FROM Ingredient i WHERE i.currentStock <= i.minimumStock")
+    long countLowStockIngredients();
 }

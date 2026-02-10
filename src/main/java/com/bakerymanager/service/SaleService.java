@@ -6,6 +6,8 @@ import com.bakerymanager.entity.Product;
 import com.bakerymanager.repository.SaleRepository;
 import com.bakerymanager.repository.SaleItemRepository;
 import com.bakerymanager.repository.ProductRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,6 +19,8 @@ import java.util.ArrayList;
 @Service
 @Transactional
 public class SaleService {
+    
+    private static final Logger logger = LoggerFactory.getLogger(SaleService.class);
     
     private final SaleRepository saleRepository;
     private final SaleItemRepository saleItemRepository;
@@ -45,6 +49,7 @@ public class SaleService {
         
         // Calculare total și creare items
         List<SaleItem> saleItems = new ArrayList<>();
+        List<Product> productsToUpdate = new ArrayList<>();
         BigDecimal totalAmount = BigDecimal.ZERO;
         
         for (CartItem cartItem : cartItems) {
@@ -62,7 +67,7 @@ public class SaleService {
             
             // Scădere stoc
             product.setCurrentStock(product.getCurrentStock().subtract(cartItem.getQuantity()));
-            productRepository.save(product);
+            productsToUpdate.add(product);
             
             // Creare SaleItem
             SaleItem saleItem = new SaleItem();
@@ -88,13 +93,14 @@ public class SaleService {
         // Salvare vânzare
         Sale savedSale = saleRepository.save(sale);
         
-        // Salvare items
+        // Batch save products and sale items
+        productRepository.saveAll(productsToUpdate);
         for (SaleItem item : saleItems) {
             item.setSale(savedSale);
-            saleItemRepository.save(item);
         }
+        saleItemRepository.saveAll(saleItems);
         
-        System.out.println("Vânzare salvată cu succes: ID=" + savedSale.getId() + ", Total=" + savedSale.getTotalAmount());
+        logger.info("Sale saved successfully: ID={}, Total={}", savedSale.getId(), savedSale.getTotalAmount());
         return savedSale;
     }
     
@@ -148,7 +154,7 @@ public class SaleService {
             }
             
             saleRepository.delete(sale);
-            System.out.println("Vânzare ștearsă: ID=" + id);
+            logger.info("Sale deleted: ID={}", id);
         }
     }
     

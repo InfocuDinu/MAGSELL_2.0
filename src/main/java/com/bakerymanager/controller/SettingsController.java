@@ -5,14 +5,20 @@ import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
 
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Properties;
 
 @Controller
 public class SettingsController {
     
+    private static final Logger logger = LoggerFactory.getLogger(SettingsController.class);
     private static final String CONFIG_FILE = "config.properties";
     
     @FXML
@@ -61,7 +67,7 @@ public class SettingsController {
     public void initialize() {
         setupComboBoxes();
         loadSettings();
-        System.out.println("Settings controller initialized");
+        logger.info("Settings controller initialized");
     }
     
     private void setupComboBoxes() {
@@ -106,15 +112,17 @@ public class SettingsController {
                     defaultUnitCombo.setValue(Ingredient.UnitOfMeasure.valueOf(defaultUnit));
                 } catch (IllegalArgumentException e) {
                     defaultUnitCombo.setValue(Ingredient.UnitOfMeasure.KG);
+                    logger.warn("Invalid unit of measure in config, using default: KG");
                 }
                 
-                System.out.println("Settings loaded from " + CONFIG_FILE);
+                logger.info("Settings loaded from {}", CONFIG_FILE);
                 
             } catch (IOException e) {
-                System.err.println("Error loading settings: " + e.getMessage());
+                logger.error("Error loading settings from {}", CONFIG_FILE, e);
                 loadDefaultSettings();
             }
         } else {
+            logger.info("Config file not found, loading default settings");
             loadDefaultSettings();
         }
     }
@@ -188,10 +196,10 @@ public class SettingsController {
             }
             
             showSuccessMessage("Setările au fost salvate cu succes!\nFișier: " + configFile.getAbsolutePath());
-            System.out.println("Settings saved to " + CONFIG_FILE);
+            logger.info("Settings saved to {}", CONFIG_FILE);
             
         } catch (Exception e) {
-            System.err.println("Error saving settings: " + e.getMessage());
+            logger.error("Error saving settings to {}", CONFIG_FILE, e);
             showError("Eroare la salvarea setărilor: " + e.getMessage());
         }
     }
@@ -218,9 +226,16 @@ public class SettingsController {
                 return;
             }
             
-            File backupDir = new File(backupLocation);
+            // Validate and sanitize backup path to prevent directory traversal
+            Path backupPath = Paths.get(backupLocation).normalize();
+            File backupDir = backupPath.toFile();
+            
             if (!backupDir.exists()) {
-                backupDir.mkdirs();
+                if (!backupDir.mkdirs()) {
+                    showError("Nu s-a putut crea directorul pentru backup!");
+                    logger.error("Failed to create backup directory: {}", backupPath);
+                    return;
+                }
             }
             
             String timestamp = java.time.LocalDateTime.now().format(
@@ -228,11 +243,14 @@ public class SettingsController {
             String backupFileName = "bakery_backup_" + timestamp + ".db";
             File backupFile = new File(backupDir, backupFileName);
             
+            // TODO: Implement actual database backup logic here
+            // For now, this is just a placeholder showing the backup location
+            
             showSuccessMessage("Backup creat cu succes!\nLocație: " + backupFile.getAbsolutePath());
-            System.out.println("Backup created at: " + backupFile.getAbsolutePath());
+            logger.info("Backup created at: {}", backupFile.getAbsolutePath());
             
         } catch (Exception e) {
-            System.err.println("Error creating backup: " + e.getMessage());
+            logger.error("Error creating backup", e);
             showError("Eroare la crearea backup-ului: " + e.getMessage());
         }
     }

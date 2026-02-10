@@ -30,4 +30,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     
     @Query("SELECT p FROM Product p WHERE LOWER(p.name) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR p.barcode = :searchTerm")
     List<Product> searchProducts(@Param("searchTerm") String searchTerm);
+    
+    @Query("SELECT COUNT(p) FROM Product p WHERE p.physicalStock > 0 AND p.isActive = true")
+    long countAvailableProducts();
 }

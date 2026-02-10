@@ -86,6 +86,7 @@ public class ProductionService {
                 item -> item.getTotalRequiredQuantity(quantity)
             ));
         
+        // Verify all ingredients have sufficient stock first (atomic check)
         for (Map.Entry<Long, BigDecimal> entry : requiredIngredients.entrySet()) {
             if (!ingredientService.hasSufficientStock(entry.getKey(), entry.getValue())) {
                 Ingredient ingredient = ingredientService.getIngredientById(entry.getKey()).get();
@@ -94,6 +95,7 @@ public class ProductionService {
             }
         }
         
+        // All checks passed, now remove stock from all ingredients
         for (Map.Entry<Long, BigDecimal> entry : requiredIngredients.entrySet()) {
             ingredientService.removeStock(entry.getKey(), entry.getValue());
         }

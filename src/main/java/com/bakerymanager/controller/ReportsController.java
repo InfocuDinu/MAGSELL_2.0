@@ -15,6 +15,8 @@ import javafx.scene.control.DatePicker;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
 import javafx.stage.FileChooser;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
 
 import java.io.File;
@@ -26,6 +28,8 @@ import java.time.format.DateTimeFormatter;
 
 @Controller
 public class ReportsController {
+    
+    private static final Logger logger = LoggerFactory.getLogger(ReportsController.class);
     
     private final ProductService productService;
     private final IngredientService ingredientService;
@@ -53,7 +57,7 @@ public class ReportsController {
     @FXML
     public void initialize() {
         setupReportTypes();
-        System.out.println("Reports controller initialized");
+        logger.info("Reports controller initialized");
     }
     
     private void setupReportTypes() {
@@ -252,18 +256,21 @@ public class ReportsController {
             createPDF(selectedFile, reportType, reportContent);
             
             showInfo("PDF exportat cu succes!\nFișier: " + selectedFile.getAbsolutePath());
+            logger.info("PDF exported successfully: {}", selectedFile.getAbsolutePath());
             
         } catch (Exception e) {
-            System.err.println("Error exporting PDF: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Error exporting PDF", e);
             showError("Eroare la exportarea PDF: " + e.getMessage());
         }
     }
     
     private void createPDF(File file, String reportType, String reportContent) throws Exception {
-        // Creăm documentul PDF
         Document document = new Document();
-        PdfWriter.getInstance(document, new FileOutputStream(file));
+        FileOutputStream fos = null;
+        
+        try {
+            fos = new FileOutputStream(file);
+            PdfWriter.getInstance(document, fos);
         
         document.open();
         
@@ -314,7 +321,18 @@ public class ReportsController {
             }
         }
         
-        document.close();
+        } finally {
+            if (document != null && document.isOpen()) {
+                document.close();
+            }
+            if (fos != null) {
+                try {
+                    fos.close();
+                } catch (Exception e) {
+                    logger.warn("Error closing file output stream", e);
+                }
+            }
+        }
     }
     
     private void createDataTable(Document document, String reportType) throws Exception {
