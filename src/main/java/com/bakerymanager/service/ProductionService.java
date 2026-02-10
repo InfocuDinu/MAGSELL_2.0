@@ -86,18 +86,18 @@ public class ProductionService {
                 item -> item.getTotalRequiredQuantity(quantity)
             ));
         
-        // Combined verification and removal in a single loop
+        // Verify all ingredients have sufficient stock first (atomic check)
         for (Map.Entry<Long, BigDecimal> entry : requiredIngredients.entrySet()) {
-            Long ingredientId = entry.getKey();
-            BigDecimal requiredQty = entry.getValue();
-            
-            if (!ingredientService.hasSufficientStock(ingredientId, requiredQty)) {
-                Ingredient ingredient = ingredientService.getIngredientById(ingredientId).get();
+            if (!ingredientService.hasSufficientStock(entry.getKey(), entry.getValue())) {
+                Ingredient ingredient = ingredientService.getIngredientById(entry.getKey()).get();
                 throw new RuntimeException("Insufficient stock for ingredient: " + ingredient.getName() + 
-                    ". Required: " + requiredQty + ", Available: " + ingredient.getCurrentStock());
+                    ". Required: " + entry.getValue() + ", Available: " + ingredient.getCurrentStock());
             }
-            
-            ingredientService.removeStock(ingredientId, requiredQty);
+        }
+        
+        // All checks passed, now remove stock from all ingredients
+        for (Map.Entry<Long, BigDecimal> entry : requiredIngredients.entrySet()) {
+            ingredientService.removeStock(entry.getKey(), entry.getValue());
         }
         
         productService.addStock(productId, quantity);
