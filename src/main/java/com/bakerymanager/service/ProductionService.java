@@ -3,11 +3,14 @@ package com.bakerymanager.service;
 import com.bakerymanager.entity.Product;
 import com.bakerymanager.entity.Ingredient;
 import com.bakerymanager.entity.RecipeItem;
+import com.bakerymanager.entity.ProductionReport;
 import com.bakerymanager.repository.RecipeItemRepository;
+import com.bakerymanager.repository.ProductionReportRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -18,13 +21,16 @@ import java.util.stream.Collectors;
 public class ProductionService {
     
     private final RecipeItemRepository recipeItemRepository;
+    private final ProductionReportRepository productionReportRepository;
     private final ProductService productService;
     private final IngredientService ingredientService;
     
-    public ProductionService(RecipeItemRepository recipeItemRepository, 
+    public ProductionService(RecipeItemRepository recipeItemRepository,
+                           ProductionReportRepository productionReportRepository,
                            ProductService productService, 
                            IngredientService ingredientService) {
         this.recipeItemRepository = recipeItemRepository;
+        this.productionReportRepository = productionReportRepository;
         this.productService = productService;
         this.ingredientService = ingredientService;
     }
@@ -100,7 +106,28 @@ public class ProductionService {
             ingredientService.removeStock(entry.getKey(), entry.getValue());
         }
         
+        // Add product stock
         productService.addStock(productId, quantity);
+        
+        // Create production report
+        ProductionReport report = new ProductionReport();
+        report.setProduct(product);
+        report.setQuantityProduced(quantity);
+        report.setProductionDate(LocalDateTime.now());
+        report.setStatus("COMPLETED");
+        productionReportRepository.save(report);
+    }
+    
+    public List<ProductionReport> getAllProductionReports() {
+        return productionReportRepository.findAllOrderByProductionDateDesc();
+    }
+    
+    public List<ProductionReport> getProductionReportsByProduct(Product product) {
+        return productionReportRepository.findByProductOrderByProductionDateDesc(product);
+    }
+    
+    public List<ProductionReport> getProductionReportsByDateRange(LocalDateTime startDate, LocalDateTime endDate) {
+        return productionReportRepository.findByProductionDateBetween(startDate, endDate);
     }
     
     public Map<Ingredient, BigDecimal> calculateRequiredIngredients(Long productId, BigDecimal quantity) {
