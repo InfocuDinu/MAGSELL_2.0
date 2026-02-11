@@ -18,7 +18,7 @@
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <spring.boot.version>3.2.1</spring.boot.version>
-        <javafx.version>21.0.1</javafx.version>
+        <javafx.version>17.0.9</javafx.version>
         <hibernate.version>6.4.1.Final</hibernate.version>
         <sqlite.version>3.45.1.0</sqlite.version>
         <jackson.version>2.16.1</jackson.version>

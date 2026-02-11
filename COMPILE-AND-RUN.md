@@ -17,7 +17,7 @@ mvn clean compile
 mvn clean package -DskipTests
 ```
 
-Acest comand va crea:
+Această comandă va crea:
 - `target/bakery-manager-pro-1.0.0.jar` - JAR simplu
 - `target/bakery-manager-pro-1.0.0-jar-with-dependencies.jar` - JAR cu toate dependențele (63MB)
 
