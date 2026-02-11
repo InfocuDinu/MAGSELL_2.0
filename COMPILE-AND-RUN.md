@@ -1,6 +1,6 @@
 # Cum să compilezi și să rulezi aplicația BakeryManager Pro
 
-## Prerechizite
+## Cerințe preliminare
 
 - **Java 17 sau superior** - verifică cu `java -version`
 - **Apache Maven 3.6+** - verifică cu `mvn --version`

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # BakeryManager Pro - Run Script for Linux
 # This script runs the BakeryManager Pro application
 
