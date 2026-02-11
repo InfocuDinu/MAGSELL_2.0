@@ -174,44 +174,26 @@ public class InventoryController {
                 return;
             }
             
+            // Determine if this is an update or create operation
+            boolean isUpdate = selectedIngredient != null;
+            
             // Create or update ingredient
             Ingredient ingredient = selectedIngredient != null ? selectedIngredient : new Ingredient();
             ingredient.setName(nameField.getText().trim());
             ingredient.setUnitOfMeasure(unitCombo.getValue());
             
-            // Parse quantity
-            BigDecimal quantity = BigDecimal.ZERO;
-            if (quantityField.getText() != null && !quantityField.getText().trim().isEmpty()) {
-                try {
-                    quantity = new BigDecimal(quantityField.getText().trim());
-                } catch (NumberFormatException e) {
-                    showError("Cantitatea trebuie să fie un număr valid!");
-                    return;
-                }
-            }
+            // Parse numeric fields
+            BigDecimal quantity = parseDecimalField(quantityField, "Cantitatea");
+            if (quantity == null) return;
             ingredient.setCurrentStock(quantity);
             
-            // Parse price
-            if (priceField.getText() != null && !priceField.getText().trim().isEmpty()) {
-                try {
-                    BigDecimal price = new BigDecimal(priceField.getText().trim());
-                    ingredient.setLastPurchasePrice(price);
-                } catch (NumberFormatException e) {
-                    showError("Prețul trebuie să fie un număr valid!");
-                    return;
-                }
+            BigDecimal price = parseDecimalField(priceField, "Prețul");
+            if (price != null) {
+                ingredient.setLastPurchasePrice(price);
             }
             
-            // Parse minimum stock
-            BigDecimal minStock = BigDecimal.ZERO;
-            if (minStockField.getText() != null && !minStockField.getText().trim().isEmpty()) {
-                try {
-                    minStock = new BigDecimal(minStockField.getText().trim());
-                } catch (NumberFormatException e) {
-                    showError("Stocul minim trebuie să fie un număr valid!");
-                    return;
-                }
-            }
+            BigDecimal minStock = parseDecimalField(minStockField, "Stocul minim");
+            if (minStock == null) minStock = BigDecimal.ZERO;
             ingredient.setMinimumStock(minStock);
             
             // Set barcode
@@ -227,13 +209,32 @@ public class InventoryController {
             updateStatistics();
             clearForm();
             
-            String message = selectedIngredient != null ? "Ingredient actualizat cu succes!" : "Ingredient adăugat cu succes!";
+            String message = isUpdate ? "Ingredient actualizat cu succes!" : "Ingredient adăugat cu succes!";
             showSuccessMessage(message);
             setStatus(message);
             
         } catch (Exception e) {
             logger.error("Error saving ingredient", e);
             showError("Eroare la salvarea ingredientului: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Helper method to parse a decimal field with validation.
+     * @param field The text field to parse
+     * @param fieldName The name of the field for error messages
+     * @return The parsed BigDecimal value, or null if the field is empty or parsing fails
+     */
+    private BigDecimal parseDecimalField(TextField field, String fieldName) {
+        if (field.getText() == null || field.getText().trim().isEmpty()) {
+            return null;
+        }
+        
+        try {
+            return new BigDecimal(field.getText().trim());
+        } catch (NumberFormatException e) {
+            showError(fieldName + " trebuie să fie un număr valid!");
+            return null;
         }
     }
     
