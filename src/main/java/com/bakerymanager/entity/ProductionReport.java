@@ -8,6 +8,22 @@ import java.time.LocalDateTime;
 @Table(name = "production_reports")
 public class ProductionReport {
     
+    public enum ProductionStatus {
+        COMPLETED("Finalizat"),
+        FAILED("Eșuat"),
+        IN_PROGRESS("În Progres");
+        
+        private final String displayName;
+        
+        ProductionStatus(String displayName) {
+            this.displayName = displayName;
+        }
+        
+        public String getDisplayName() {
+            return displayName;
+        }
+    }
+    
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -22,8 +38,9 @@ public class ProductionReport {
     @Column(name = "production_date", nullable = false)
     private LocalDateTime productionDate;
     
+    @Enumerated(EnumType.STRING)
     @Column(name = "status")
-    private String status; // "COMPLETED", "FAILED", "IN_PROGRESS"
+    private ProductionStatus status;
     
     @Column(name = "notes", length = 500)
     private String notes;
@@ -42,7 +59,7 @@ public class ProductionReport {
             productionDate = LocalDateTime.now();
         }
         if (status == null) {
-            status = "COMPLETED";
+            status = ProductionStatus.COMPLETED;
         }
     }
     
@@ -64,8 +81,8 @@ public class ProductionReport {
     public LocalDateTime getProductionDate() { return productionDate; }
     public void setProductionDate(LocalDateTime productionDate) { this.productionDate = productionDate; }
     
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
+    public ProductionStatus getStatus() { return status; }
+    public void setStatus(ProductionStatus status) { this.status = status; }
     
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }

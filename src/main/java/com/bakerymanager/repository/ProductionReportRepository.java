@@ -15,7 +15,7 @@ public interface ProductionReportRepository extends JpaRepository<ProductionRepo
     
     List<ProductionReport> findByProductOrderByProductionDateDesc(Product product);
     
-    List<ProductionReport> findByStatusOrderByProductionDateDesc(String status);
+    List<ProductionReport> findByStatusOrderByProductionDateDesc(ProductionReport.ProductionStatus status);
     
     @Query("SELECT pr FROM ProductionReport pr WHERE pr.productionDate BETWEEN :startDate AND :endDate ORDER BY pr.productionDate DESC")
     List<ProductionReport> findByProductionDateBetween(@Param("startDate") LocalDateTime startDate, 

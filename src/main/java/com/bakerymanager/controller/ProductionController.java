@@ -288,7 +288,7 @@ public class ProductionController {
                     report.getProductionDate(),
                     report.getProduct() != null ? report.getProduct().getName() : "Necunoscut",
                     report.getQuantityProduced(),
-                    report.getStatus()
+                    report.getStatus() != null ? report.getStatus().getDisplayName() : "Necunoscut"
                 );
                 productionHistory.add(record);
             }

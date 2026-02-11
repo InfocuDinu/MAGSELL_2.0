@@ -114,7 +114,7 @@ public class ProductionService {
         report.setProduct(product);
         report.setQuantityProduced(quantity);
         report.setProductionDate(LocalDateTime.now());
-        report.setStatus("COMPLETED");
+        report.setStatus(ProductionReport.ProductionStatus.COMPLETED);
         productionReportRepository.save(report);
     }
     
