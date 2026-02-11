@@ -31,6 +31,10 @@ public class Sale {
     @Column(name = "customer_name")
     private String customerName;
     
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "customer_id")
+    private Customer customer;
+    
     @Column(name = "operator")
     private String operator;
     
@@ -104,6 +108,14 @@ public class Sale {
     
     public String getCustomerName() { return customerName; }
     public void setCustomerName(String customerName) { this.customerName = customerName; }
+    
+    public Customer getCustomer() { return customer; }
+    public void setCustomer(Customer customer) { 
+        this.customer = customer;
+        if (customer != null) {
+            this.customerName = customer.getName();
+        }
+    }
     
     public String getOperator() { return operator; }
     public void setOperator(String operator) { this.operator = operator; }
