@@ -2,6 +2,7 @@ package com.bakerymanager.entity;
 
 import jakarta.persistence.*;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -33,6 +34,17 @@ public class Ingredient {
     
     @Column(name = "notes", length = 500)
     private String notes;
+    
+    // NEW: Expiration date tracking for food safety
+    @Column(name = "expiration_date")
+    private LocalDate expirationDate;
+    
+    // NEW: Batch/lot tracking for traceability
+    @Column(name = "batch_number")
+    private String batchNumber;
+    
+    @Column(name = "batch_date")
+    private LocalDate batchDate;
     
     @Column(name = "created_at")
     private LocalDateTime createdAt;
@@ -100,9 +112,30 @@ public class Ingredient {
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
     
+    public LocalDate getExpirationDate() { return expirationDate; }
+    public void setExpirationDate(LocalDate expirationDate) { this.expirationDate = expirationDate; }
+    
+    public String getBatchNumber() { return batchNumber; }
+    public void setBatchNumber(String batchNumber) { this.batchNumber = batchNumber; }
+    
+    public LocalDate getBatchDate() { return batchDate; }
+    public void setBatchDate(LocalDate batchDate) { this.batchDate = batchDate; }
+    
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    
+    // Helper method to check if ingredient is expired
+    public boolean isExpired() {
+        return expirationDate != null && expirationDate.isBefore(LocalDate.now());
+    }
+    
+    // Helper method to check if ingredient is expiring soon (within 7 days)
+    public boolean isExpiringSoon() {
+        if (expirationDate == null) return false;
+        LocalDate weekFromNow = LocalDate.now().plusDays(7);
+        return expirationDate.isAfter(LocalDate.now()) && expirationDate.isBefore(weekFromNow);
+    }
 }

@@ -2,6 +2,7 @@ package com.bakerymanager.entity;
 
 import jakarta.persistence.*;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -30,6 +31,17 @@ public class Product {
     
     @Column(name = "is_active")
     private Boolean isActive = true;
+    
+    // NEW: Expiration date tracking for food safety
+    @Column(name = "expiration_date")
+    private LocalDate expirationDate;
+    
+    // NEW: Batch/lot tracking for traceability
+    @Column(name = "batch_number")
+    private String batchNumber;
+    
+    @Column(name = "production_date")
+    private LocalDate productionDate;
     
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<RecipeItem> recipeItems;
@@ -105,9 +117,30 @@ public class Product {
     public List<RecipeItem> getRecipeItems() { return recipeItems; }
     public void setRecipeItems(List<RecipeItem> recipeItems) { this.recipeItems = recipeItems; }
     
+    public LocalDate getExpirationDate() { return expirationDate; }
+    public void setExpirationDate(LocalDate expirationDate) { this.expirationDate = expirationDate; }
+    
+    public String getBatchNumber() { return batchNumber; }
+    public void setBatchNumber(String batchNumber) { this.batchNumber = batchNumber; }
+    
+    public LocalDate getProductionDate() { return productionDate; }
+    public void setProductionDate(LocalDate productionDate) { this.productionDate = productionDate; }
+    
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    
+    // Helper method to check if product is expired
+    public boolean isExpired() {
+        return expirationDate != null && expirationDate.isBefore(LocalDate.now());
+    }
+    
+    // Helper method to check if product is expiring soon (within 3 days for bakery products)
+    public boolean isExpiringSoon() {
+        if (expirationDate == null) return false;
+        LocalDate threeDaysFromNow = LocalDate.now().plusDays(3);
+        return expirationDate.isAfter(LocalDate.now()) && expirationDate.isBefore(threeDaysFromNow);
+    }
 }
