@@ -3,6 +3,7 @@ package com.bakerymanager.controller;
 import com.bakerymanager.entity.Product;
 import com.bakerymanager.service.ProductService;
 import com.bakerymanager.service.SaleService;
+import com.bakerymanager.service.FiscalPrinterService;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -29,10 +30,12 @@ public class POSController {
     
     private final ProductService productService;
     private final SaleService saleService;
+    private final FiscalPrinterService fiscalPrinterService;
     
-    public POSController(ProductService productService, SaleService saleService) {
+    public POSController(ProductService productService, SaleService saleService, FiscalPrinterService fiscalPrinterService) {
         this.productService = productService;
         this.saleService = saleService;
+        this.fiscalPrinterService = fiscalPrinterService;
     }
     
     @FXML
@@ -541,6 +544,20 @@ public class POSController {
                 operator
             );
             
+            // Print fiscal receipt
+            try {
+                boolean printed = fiscalPrinterService.printReceipt(savedSale);
+                if (printed) {
+                    logger.info("Fiscal receipt printed for sale ID: {}", savedSale.getId());
+                } else {
+                    logger.warn("Failed to print fiscal receipt: {}", fiscalPrinterService.getLastError());
+                    showWarning("Vânzare salvată, dar bonul fiscal nu a putut fi tipărit.\nMotiv: " + fiscalPrinterService.getLastError());
+                }
+            } catch (Exception e) {
+                logger.error("Error printing fiscal receipt", e);
+                showWarning("Vânzare salvată, dar eroare la tipărire bon fiscal.");
+            }
+            
             // Actualizare statistici locale
             dailySales = dailySales.add(total);
             dailySalesLabel.setText(String.format("%.2f lei", dailySales));
@@ -667,6 +684,14 @@ public class POSController {
     private void showError(String message) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle("Eroare");
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.show();
+    }
+    
+    private void showWarning(String message) {
+        Alert alert = new Alert(Alert.AlertType.WARNING);
+        alert.setTitle("Avertisment");
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.show();
