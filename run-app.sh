@@ -17,7 +17,8 @@ fi
 # Check Java version
 JAVA_VERSION=$(java -version 2>&1 | awk -F '"' '/version/ {print $2}' | cut -d'.' -f1)
 if [ "$JAVA_VERSION" -lt 17 ]; then
-    echo "WARNING: Java version is less than 17. This application requires Java 17 or higher."
+    echo "ERROR: Java version is less than 17. This application requires Java 17 or higher."
+    exit 1
 fi
 
 # Check if Maven is installed
