@@ -36,11 +36,11 @@ public class ProductionService {
     }
     
     public List<RecipeItem> getRecipeByProduct(Long productId) {
-        return recipeItemRepository.findByProductId(productId);
+        return recipeItemRepository.findByProductIdWithIngredient(productId);
     }
     
     public List<RecipeItem> getRecipeByProduct(Product product) {
-        return recipeItemRepository.findByProduct(product);
+        return recipeItemRepository.findByProductWithIngredient(product);
     }
     
     public RecipeItem addRecipeItem(Long productId, Long ingredientId, BigDecimal requiredQuantity) {
@@ -81,7 +81,7 @@ public class ProductionService {
         Product product = productService.getProductById(productId)
             .orElseThrow(() -> new RuntimeException("Product not found: " + productId));
         
-        List<RecipeItem> recipeItems = recipeItemRepository.findByProduct(product);
+        List<RecipeItem> recipeItems = recipeItemRepository.findByProductWithIngredient(product);
         if (recipeItems.isEmpty()) {
             throw new RuntimeException("No recipe defined for product: " + product.getName());
         }
@@ -134,7 +134,7 @@ public class ProductionService {
         Product product = productService.getProductById(productId)
             .orElseThrow(() -> new RuntimeException("Product not found: " + productId));
         
-        List<RecipeItem> recipeItems = recipeItemRepository.findByProduct(product);
+        List<RecipeItem> recipeItems = recipeItemRepository.findByProductWithIngredient(product);
         
         return recipeItems.stream()
             .collect(Collectors.toMap(

@@ -31,4 +31,11 @@ public interface RecipeItemRepository extends JpaRepository<RecipeItem, Long> {
     
     @Query("SELECT ri FROM RecipeItem ri WHERE ri.product = :product ORDER BY ri.ingredient.name")
     List<RecipeItem> findByProductOrderByIngredientName(@Param("product") Product product);
+    
+    // JOIN FETCH queries to avoid LazyInitializationException
+    @Query("SELECT ri FROM RecipeItem ri JOIN FETCH ri.ingredient WHERE ri.product = :product")
+    List<RecipeItem> findByProductWithIngredient(@Param("product") Product product);
+    
+    @Query("SELECT ri FROM RecipeItem ri JOIN FETCH ri.ingredient WHERE ri.product.id = :productId")
+    List<RecipeItem> findByProductIdWithIngredient(@Param("productId") Long productId);
 }
