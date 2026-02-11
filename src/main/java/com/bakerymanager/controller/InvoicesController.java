@@ -274,7 +274,141 @@ public class InvoicesController {
     
     @FXML
     public void createManualInvoice() {
-        showSuccessMessage("Creare factură manuală - funcționalitate în dezvoltare");
+        try {
+            // Create dialog
+            javafx.scene.control.Dialog<Invoice> dialog = new javafx.scene.control.Dialog<>();
+            dialog.setTitle("Creare Factură Manuală");
+            dialog.setHeaderText("Introduceți datele facturii");
+            
+            // Set dialog buttons
+            javafx.scene.control.ButtonType saveButtonType = new javafx.scene.control.ButtonType("Salvează", javafx.scene.control.ButtonBar.ButtonData.OK_DONE);
+            dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, javafx.scene.control.ButtonType.CANCEL);
+            
+            // Create form fields
+            javafx.scene.layout.GridPane grid = new javafx.scene.layout.GridPane();
+            grid.setHgap(10);
+            grid.setVgap(10);
+            grid.setPadding(new javafx.geometry.Insets(20, 150, 10, 10));
+            
+            javafx.scene.control.TextField invoiceNumberField = new javafx.scene.control.TextField();
+            invoiceNumberField.setPromptText("Ex: FAC-2026-001");
+            
+            javafx.scene.control.TextField supplierNameField = new javafx.scene.control.TextField();
+            supplierNameField.setPromptText("Nume furnizor");
+            
+            javafx.scene.control.TextField supplierCuiField = new javafx.scene.control.TextField();
+            supplierCuiField.setPromptText("CUI furnizor");
+            
+            javafx.scene.control.DatePicker invoiceDatePicker = new javafx.scene.control.DatePicker();
+            invoiceDatePicker.setValue(LocalDate.now());
+            
+            javafx.scene.control.TextField totalAmountField = new javafx.scene.control.TextField();
+            totalAmountField.setPromptText("0.00");
+            
+            javafx.scene.control.ComboBox<String> currencyCombo = new javafx.scene.control.ComboBox<>();
+            currencyCombo.getItems().addAll("RON", "EUR", "USD");
+            currencyCombo.setValue("RON");
+            
+            javafx.scene.control.TextArea notesArea = new javafx.scene.control.TextArea();
+            notesArea.setPromptText("Observații (opțional)");
+            notesArea.setPrefRowCount(3);
+            
+            // Add fields to grid
+            grid.add(new javafx.scene.control.Label("Număr Factură:"), 0, 0);
+            grid.add(invoiceNumberField, 1, 0);
+            grid.add(new javafx.scene.control.Label("Furnizor:"), 0, 1);
+            grid.add(supplierNameField, 1, 1);
+            grid.add(new javafx.scene.control.Label("CUI Furnizor:"), 0, 2);
+            grid.add(supplierCuiField, 1, 2);
+            grid.add(new javafx.scene.control.Label("Data Facturii:"), 0, 3);
+            grid.add(invoiceDatePicker, 1, 3);
+            grid.add(new javafx.scene.control.Label("Valoare Totală:"), 0, 4);
+            grid.add(totalAmountField, 1, 4);
+            grid.add(new javafx.scene.control.Label("Monedă:"), 0, 5);
+            grid.add(currencyCombo, 1, 5);
+            grid.add(new javafx.scene.control.Label("Observații:"), 0, 6);
+            grid.add(notesArea, 1, 6);
+            
+            dialog.getDialogPane().setContent(grid);
+            
+            // Enable/disable save button based on validation
+            javafx.scene.Node saveButton = dialog.getDialogPane().lookupButton(saveButtonType);
+            saveButton.setDisable(true);
+            
+            // Validation
+            invoiceNumberField.textProperty().addListener((observable, oldValue, newValue) -> {
+                saveButton.setDisable(newValue.trim().isEmpty() || 
+                                     supplierNameField.getText().trim().isEmpty() ||
+                                     totalAmountField.getText().trim().isEmpty());
+            });
+            
+            supplierNameField.textProperty().addListener((observable, oldValue, newValue) -> {
+                saveButton.setDisable(newValue.trim().isEmpty() || 
+                                     invoiceNumberField.getText().trim().isEmpty() ||
+                                     totalAmountField.getText().trim().isEmpty());
+            });
+            
+            totalAmountField.textProperty().addListener((observable, oldValue, newValue) -> {
+                saveButton.setDisable(newValue.trim().isEmpty() || 
+                                     invoiceNumberField.getText().trim().isEmpty() ||
+                                     supplierNameField.getText().trim().isEmpty());
+            });
+            
+            // Convert result to Invoice
+            dialog.setResultConverter(dialogButton -> {
+                if (dialogButton == saveButtonType) {
+                    try {
+                        Invoice invoice = new Invoice();
+                        invoice.setInvoiceNumber(invoiceNumberField.getText().trim());
+                        invoice.setSupplierName(supplierNameField.getText().trim());
+                        invoice.setSupplierCui(supplierCuiField.getText().trim());
+                        invoice.setInvoiceDate(invoiceDatePicker.getValue().atStartOfDay());
+                        invoice.setTotalAmount(new BigDecimal(totalAmountField.getText().trim()));
+                        invoice.setCurrency(currencyCombo.getValue());
+                        invoice.setIsSpvImported(false); // Manual invoice
+                        invoice.setStatus("MANUAL");
+                        invoice.setImportDate(LocalDateTime.now());
+                        invoice.setNumberOfLines(0); // Will be updated when lines are added
+                        
+                        return invoice;
+                    } catch (NumberFormatException e) {
+                        showError("Valoarea totală trebuie să fie un număr valid!");
+                        return null;
+                    }
+                }
+                return null;
+            });
+            
+            // Show dialog and process result
+            java.util.Optional<Invoice> result = dialog.showAndWait();
+            
+            result.ifPresent(invoice -> {
+                try {
+                    // Save invoice
+                    Invoice savedInvoice = invoiceService.saveInvoice(invoice);
+                    
+                    // Reload invoices
+                    loadInvoices();
+                    updateStatistics();
+                    
+                    showSuccessMessage("Factura a fost creată cu succes!\n" +
+                                     "Număr: " + savedInvoice.getInvoiceNumber() + "\n" +
+                                     "Furnizor: " + savedInvoice.getSupplierName() + "\n" +
+                                     "Valoare: " + savedInvoice.getTotalAmount() + " " + savedInvoice.getCurrency() + "\n\n" +
+                                     "Puteți adăuga linii de factură și produse în modulul de inventar.");
+                    
+                    logger.info("Manual invoice created: {}", savedInvoice.getInvoiceNumber());
+                    
+                } catch (Exception e) {
+                    logger.error("Error saving manual invoice", e);
+                    showError("Eroare la salvarea facturii: " + e.getMessage());
+                }
+            });
+            
+        } catch (Exception e) {
+            logger.error("Error creating manual invoice dialog", e);
+            showError("Eroare la crearea facturii manuale: " + e.getMessage());
+        }
     }
     
     private void showSuccessMessage(String message) {
