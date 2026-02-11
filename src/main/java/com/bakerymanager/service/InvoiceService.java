@@ -158,10 +158,20 @@ public class InvoiceService {
         // Save invoice first
         Invoice savedInvoice = invoiceRepository.save(invoice);
         
-        // Save each line
+        // Save each line - ingredients should already be persisted by controller
         for (InvoiceLine line : lines) {
             line.setInvoice(savedInvoice);
             line.calculateTotal();
+            
+            // Verify ingredient is persisted (has an ID)
+            if (line.getIngredient() != null && line.getIngredient().getId() == null) {
+                logger.warn("InvoiceLine has transient ingredient: {}. Attempting to save ingredient first.", 
+                    line.getIngredient().getName());
+                // This should not happen if controller does its job, but as a safety measure:
+                Ingredient savedIngredient = ingredientService.saveIngredient(line.getIngredient());
+                line.setIngredient(savedIngredient);
+            }
+            
             invoiceLineRepository.save(line);
         }
         

@@ -2,7 +2,9 @@ package com.bakerymanager.controller;
 
 import com.bakerymanager.dto.UBLInvoiceDto;
 import com.bakerymanager.entity.Invoice;
+import com.bakerymanager.entity.Ingredient;
 import com.bakerymanager.service.InvoiceService;
+import com.bakerymanager.service.IngredientService;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -34,9 +36,11 @@ public class InvoicesController {
     private static final Logger logger = LoggerFactory.getLogger(InvoicesController.class);
     
     private final InvoiceService invoiceService;
+    private final IngredientService ingredientService;
     
-    public InvoicesController(InvoiceService invoiceService) {
+    public InvoicesController(InvoiceService invoiceService, IngredientService ingredientService) {
         this.invoiceService = invoiceService;
+        this.ingredientService = ingredientService;
     }
     
     @FXML
@@ -575,18 +579,17 @@ public class InvoicesController {
                     line.setProductType(typeCombo.getValue());
                     line.calculateTotal();
                     
-                    // Create or find ingredient for this product
-                    com.bakerymanager.entity.Ingredient ingredient = new com.bakerymanager.entity.Ingredient();
-                    ingredient.setName(line.getProductName());
-                    ingredient.setCurrentStock(BigDecimal.ZERO);
-                    ingredient.setMinimumStock(BigDecimal.ZERO);
-                    ingredient.setLastPurchasePrice(line.getUnitPrice());
-                    ingredient.setUnitOfMeasure(com.bakerymanager.entity.Ingredient.UnitOfMeasure.BUC);
+                    // Find or create ingredient for this product - MUST be saved to database first
+                    Ingredient ingredient = findOrCreateIngredient(line.getProductName(), line.getUnitPrice(), typeCombo.getValue());
                     line.setIngredient(ingredient);
                     
                     return line;
                 } catch (NumberFormatException e) {
                     showError("Cantitatea și prețul trebuie să fie numere valide!");
+                    return null;
+                } catch (Exception e) {
+                    logger.error("Error creating invoice line", e);
+                    showError("Eroare la crearea liniei de factură: " + e.getMessage());
                     return null;
                 }
             }
@@ -598,6 +601,61 @@ public class InvoicesController {
             invoiceLines.add(line);
             table.refresh();
         });
+    }
+    
+    /**
+     * Find existing ingredient by name or create a new one and save it to database.
+     * This ensures the ingredient is persisted before being referenced by InvoiceLine.
+     * 
+     * @param ingredientName Name of the ingredient
+     * @param purchasePrice Purchase price from invoice
+     * @param productType Type of product (MATERIE_PRIMA or MARFA)
+     * @return Saved (persisted) Ingredient entity
+     */
+    private Ingredient findOrCreateIngredient(String ingredientName, BigDecimal purchasePrice, 
+                                             com.bakerymanager.entity.InvoiceLine.ProductType productType) {
+        // Try to find existing ingredient by exact name
+        List<Ingredient> ingredients = ingredientService.findByName(ingredientName);
+        
+        if (!ingredients.isEmpty()) {
+            logger.info("Found existing ingredient: {}", ingredientName);
+            return ingredients.get(0);
+        }
+        
+        // Try to find by name containing (case-insensitive)
+        ingredients = ingredientService.findByNameContainingIgnoreCase(ingredientName);
+        
+        if (!ingredients.isEmpty()) {
+            logger.info("Found ingredient via partial match: {} for search term: {}", 
+                ingredients.get(0).getName(), ingredientName);
+            return ingredients.get(0);
+        }
+        
+        // Create new ingredient and save to database
+        Ingredient newIngredient = new Ingredient();
+        newIngredient.setName(ingredientName);
+        newIngredient.setCurrentStock(BigDecimal.ZERO);
+        newIngredient.setMinimumStock(BigDecimal.ZERO);
+        newIngredient.setLastPurchasePrice(purchasePrice);
+        newIngredient.setUnitOfMeasure(Ingredient.UnitOfMeasure.BUC);
+        
+        // Map InvoiceLine.ProductType to Ingredient.ProductType
+        if (productType == com.bakerymanager.entity.InvoiceLine.ProductType.MATERIE_PRIMA) {
+            newIngredient.setProductType(Ingredient.ProductType.MATERIE_PRIMA);
+        } else {
+            newIngredient.setProductType(Ingredient.ProductType.MARFA);
+        }
+        
+        newIngredient.setNotes("Creat automat la introducere factură manuală");
+        
+        try {
+            Ingredient savedIngredient = ingredientService.saveIngredient(newIngredient);
+            logger.info("Created new ingredient: {} (ID: {})", savedIngredient.getName(), savedIngredient.getId());
+            return savedIngredient;
+        } catch (Exception e) {
+            logger.error("Error creating ingredient: {}", ingredientName, e);
+            throw new RuntimeException("Nu s-a putut crea produsul: " + ingredientName + ". " + e.getMessage(), e);
+        }
     }
     
     private void showSuccessMessage(String message) {
