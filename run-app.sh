@@ -16,6 +16,11 @@ fi
 
 # Check Java version
 JAVA_VERSION=$(java -version 2>&1 | awk -F '"' '/version/ {print $2}' | cut -d'.' -f1)
+if [ -z "$JAVA_VERSION" ] || ! [[ "$JAVA_VERSION" =~ ^[0-9]+$ ]]; then
+    echo "ERROR: Unable to determine Java version."
+    echo "Please ensure Java is properly installed."
+    exit 1
+fi
 if [ "$JAVA_VERSION" -lt 17 ]; then
     echo "ERROR: Java version is less than 17. This application requires Java 17 or higher."
     exit 1
