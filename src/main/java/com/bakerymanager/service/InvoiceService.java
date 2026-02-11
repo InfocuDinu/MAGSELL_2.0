@@ -148,6 +148,37 @@ public class InvoiceService {
         return invoiceRepository.save(invoice);
     }
     
+    @Transactional
+    public InvoiceLine saveInvoiceLine(InvoiceLine invoiceLine) {
+        return invoiceLineRepository.save(invoiceLine);
+    }
+    
+    @Transactional
+    public Invoice saveInvoiceWithLines(Invoice invoice, List<InvoiceLine> lines) {
+        // Save invoice first
+        Invoice savedInvoice = invoiceRepository.save(invoice);
+        
+        // Save each line
+        for (InvoiceLine line : lines) {
+            line.setInvoice(savedInvoice);
+            line.calculateTotal();
+            invoiceLineRepository.save(line);
+        }
+        
+        // Update invoice line count and total
+        savedInvoice.setNumberOfLines(lines.size());
+        BigDecimal total = lines.stream()
+            .map(InvoiceLine::getTotalPrice)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        savedInvoice.setTotalAmount(total);
+        
+        return invoiceRepository.save(savedInvoice);
+    }
+    
+    public List<InvoiceLine> getInvoiceLines(Long invoiceId) {
+        return invoiceLineRepository.findByInvoiceId(invoiceId);
+    }
+    
     public Invoice createManualInvoice(String invoiceNumber, String supplierName, 
                                      List<InvoiceLine> invoiceLines) {
         Invoice invoice = new Invoice();

@@ -274,21 +274,33 @@ public class InvoicesController {
     
     @FXML
     public void createManualInvoice() {
+        showManualInvoiceDialog();
+    }
+    
+    private void showManualInvoiceDialog() {
         try {
-            // Create dialog
-            javafx.scene.control.Dialog<Invoice> dialog = new javafx.scene.control.Dialog<>();
-            dialog.setTitle("Creare Factură Manuală");
-            dialog.setHeaderText("Introduceți datele facturii");
+            // Create stage for comprehensive dialog
+            javafx.stage.Stage dialogStage = new javafx.stage.Stage();
+            dialogStage.setTitle("Creare Factură Manuală");
+            dialogStage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
+            dialogStage.setMinWidth(800);
+            dialogStage.setMinHeight(600);
             
-            // Set dialog buttons
-            javafx.scene.control.ButtonType saveButtonType = new javafx.scene.control.ButtonType("Salvează", javafx.scene.control.ButtonBar.ButtonData.OK_DONE);
-            dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, javafx.scene.control.ButtonType.CANCEL);
+            // Main container
+            javafx.scene.layout.BorderPane mainPane = new javafx.scene.layout.BorderPane();
+            mainPane.setPadding(new javafx.geometry.Insets(15));
             
-            // Create form fields
-            javafx.scene.layout.GridPane grid = new javafx.scene.layout.GridPane();
-            grid.setHgap(10);
-            grid.setVgap(10);
-            grid.setPadding(new javafx.geometry.Insets(20, 150, 10, 10));
+            // Header section
+            javafx.scene.layout.VBox headerBox = new javafx.scene.layout.VBox(10);
+            javafx.scene.control.Label titleLabel = new javafx.scene.control.Label("Creare Factură Manuală");
+            titleLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
+            headerBox.getChildren().add(titleLabel);
+            
+            // Invoice header form
+            javafx.scene.layout.GridPane headerGrid = new javafx.scene.layout.GridPane();
+            headerGrid.setHgap(10);
+            headerGrid.setVgap(10);
+            headerGrid.setPadding(new javafx.geometry.Insets(10));
             
             javafx.scene.control.TextField invoiceNumberField = new javafx.scene.control.TextField();
             invoiceNumberField.setPromptText("Ex: FAC-2026-001");
@@ -297,118 +309,295 @@ public class InvoicesController {
             supplierNameField.setPromptText("Nume furnizor");
             
             javafx.scene.control.TextField supplierCuiField = new javafx.scene.control.TextField();
-            supplierCuiField.setPromptText("CUI furnizor");
+            supplierCuiField.setPromptText("CUI furnizor (opțional)");
             
             javafx.scene.control.DatePicker invoiceDatePicker = new javafx.scene.control.DatePicker();
             invoiceDatePicker.setValue(LocalDate.now());
-            
-            javafx.scene.control.TextField totalAmountField = new javafx.scene.control.TextField();
-            totalAmountField.setPromptText("0.00");
             
             javafx.scene.control.ComboBox<String> currencyCombo = new javafx.scene.control.ComboBox<>();
             currencyCombo.getItems().addAll("RON", "EUR", "USD");
             currencyCombo.setValue("RON");
             
-            javafx.scene.control.TextArea notesArea = new javafx.scene.control.TextArea();
-            notesArea.setPromptText("Observații (opțional)");
-            notesArea.setPrefRowCount(3);
+            headerGrid.add(new javafx.scene.control.Label("Număr Factură:"), 0, 0);
+            headerGrid.add(invoiceNumberField, 1, 0);
+            headerGrid.add(new javafx.scene.control.Label("Furnizor:"), 0, 1);
+            headerGrid.add(supplierNameField, 1, 1);
+            headerGrid.add(new javafx.scene.control.Label("CUI Furnizor:"), 0, 2);
+            headerGrid.add(supplierCuiField, 1, 2);
+            headerGrid.add(new javafx.scene.control.Label("Data:"), 0, 3);
+            headerGrid.add(invoiceDatePicker, 1, 3);
+            headerGrid.add(new javafx.scene.control.Label("Monedă:"), 0, 4);
+            headerGrid.add(currencyCombo, 1, 4);
             
-            // Add fields to grid
-            grid.add(new javafx.scene.control.Label("Număr Factură:"), 0, 0);
-            grid.add(invoiceNumberField, 1, 0);
-            grid.add(new javafx.scene.control.Label("Furnizor:"), 0, 1);
-            grid.add(supplierNameField, 1, 1);
-            grid.add(new javafx.scene.control.Label("CUI Furnizor:"), 0, 2);
-            grid.add(supplierCuiField, 1, 2);
-            grid.add(new javafx.scene.control.Label("Data Facturii:"), 0, 3);
-            grid.add(invoiceDatePicker, 1, 3);
-            grid.add(new javafx.scene.control.Label("Valoare Totală:"), 0, 4);
-            grid.add(totalAmountField, 1, 4);
-            grid.add(new javafx.scene.control.Label("Monedă:"), 0, 5);
-            grid.add(currencyCombo, 1, 5);
-            grid.add(new javafx.scene.control.Label("Observații:"), 0, 6);
-            grid.add(notesArea, 1, 6);
+            headerBox.getChildren().add(headerGrid);
+            mainPane.setTop(headerBox);
             
-            dialog.getDialogPane().setContent(grid);
+            // Invoice lines section
+            javafx.scene.layout.VBox linesBox = new javafx.scene.layout.VBox(10);
+            linesBox.setPadding(new javafx.geometry.Insets(10));
             
-            // Enable/disable save button based on validation
-            javafx.scene.Node saveButton = dialog.getDialogPane().lookupButton(saveButtonType);
+            javafx.scene.control.Label linesLabel = new javafx.scene.control.Label("Linii Factură (Produse):");
+            linesLabel.setStyle("-fx-font-weight: bold;");
+            
+            // Table for invoice lines
+            javafx.scene.control.TableView<com.bakerymanager.entity.InvoiceLine> linesTable = new javafx.scene.control.TableView<>();
+            ObservableList<com.bakerymanager.entity.InvoiceLine> invoiceLines = FXCollections.observableArrayList();
+            linesTable.setItems(invoiceLines);
+            linesTable.setPrefHeight(200);
+            
+            javafx.scene.control.TableColumn<com.bakerymanager.entity.InvoiceLine, String> productCol = new javafx.scene.control.TableColumn<>("Produs");
+            productCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("productName"));
+            productCol.setPrefWidth(200);
+            
+            javafx.scene.control.TableColumn<com.bakerymanager.entity.InvoiceLine, BigDecimal> quantityCol = new javafx.scene.control.TableColumn<>("Cantitate");
+            quantityCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("quantity"));
+            quantityCol.setPrefWidth(100);
+            
+            javafx.scene.control.TableColumn<com.bakerymanager.entity.InvoiceLine, BigDecimal> priceCol = new javafx.scene.control.TableColumn<>("Preț Unitar");
+            priceCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("unitPrice"));
+            priceCol.setPrefWidth(100);
+            
+            javafx.scene.control.TableColumn<com.bakerymanager.entity.InvoiceLine, BigDecimal> totalCol = new javafx.scene.control.TableColumn<>("Total");
+            totalCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("totalPrice"));
+            totalCol.setPrefWidth(100);
+            
+            javafx.scene.control.TableColumn<com.bakerymanager.entity.InvoiceLine, String> typeCol = new javafx.scene.control.TableColumn<>("Tip");
+            typeCol.setCellValueFactory(cellData -> {
+                com.bakerymanager.entity.InvoiceLine.ProductType type = cellData.getValue().getProductType();
+                return new javafx.beans.property.SimpleStringProperty(type != null ? type.getDisplayName() : "");
+            });
+            typeCol.setPrefWidth(150);
+            
+            linesTable.getColumns().addAll(productCol, quantityCol, priceCol, totalCol, typeCol);
+            
+            // Add line button
+            javafx.scene.control.Button addLineButton = new javafx.scene.control.Button("➕ Adaugă Produs");
+            addLineButton.setOnAction(e -> showAddLineDialog(invoiceLines, linesTable));
+            
+            // Remove line button
+            javafx.scene.control.Button removeLineButton = new javafx.scene.control.Button("❌ Șterge Produs");
+            removeLineButton.setDisable(true);
+            linesTable.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
+                removeLineButton.setDisable(newVal == null);
+            });
+            removeLineButton.setOnAction(e -> {
+                com.bakerymanager.entity.InvoiceLine selected = linesTable.getSelectionModel().getSelectedItem();
+                if (selected != null) {
+                    invoiceLines.remove(selected);
+                }
+            });
+            
+            javafx.scene.layout.HBox lineButtonBox = new javafx.scene.layout.HBox(10);
+            lineButtonBox.getChildren().addAll(addLineButton, removeLineButton);
+            
+            linesBox.getChildren().addAll(linesLabel, linesTable, lineButtonBox);
+            mainPane.setCenter(linesBox);
+            
+            // Total calculation label
+            javafx.scene.control.Label totalLabel = new javafx.scene.control.Label("Total: 0.00 RON");
+            totalLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
+            
+            // Update total when lines change
+            invoiceLines.addListener((javafx.collections.ListChangeListener.Change<? extends com.bakerymanager.entity.InvoiceLine> c) -> {
+                BigDecimal total = invoiceLines.stream()
+                    .map(com.bakerymanager.entity.InvoiceLine::getTotalPrice)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+                totalLabel.setText(String.format("Total: %.2f %s", total, currencyCombo.getValue()));
+            });
+            
+            // Bottom buttons
+            javafx.scene.layout.HBox bottomBox = new javafx.scene.layout.HBox(10);
+            bottomBox.setPadding(new javafx.geometry.Insets(10));
+            bottomBox.setAlignment(javafx.geometry.Pos.CENTER_RIGHT);
+            bottomBox.getChildren().add(totalLabel);
+            
+            javafx.scene.layout.Region spacer = new javafx.scene.layout.Region();
+            javafx.scene.layout.HBox.setHgrow(spacer, javafx.scene.layout.Priority.ALWAYS);
+            bottomBox.getChildren().add(spacer);
+            
+            javafx.scene.control.Button saveButton = new javafx.scene.control.Button("💾 Salvează Factură");
+            saveButton.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold;");
             saveButton.setDisable(true);
             
-            // Validation
-            invoiceNumberField.textProperty().addListener((observable, oldValue, newValue) -> {
-                saveButton.setDisable(newValue.trim().isEmpty() || 
-                                     supplierNameField.getText().trim().isEmpty() ||
-                                     totalAmountField.getText().trim().isEmpty());
-            });
+            javafx.scene.control.Button cancelButton = new javafx.scene.control.Button("✖ Anulează");
             
-            supplierNameField.textProperty().addListener((observable, oldValue, newValue) -> {
-                saveButton.setDisable(newValue.trim().isEmpty() || 
-                                     invoiceNumberField.getText().trim().isEmpty() ||
-                                     totalAmountField.getText().trim().isEmpty());
-            });
+            // Enable save button when required fields are filled
+            javafx.beans.binding.BooleanBinding formValid = invoiceNumberField.textProperty().isEmpty()
+                .or(supplierNameField.textProperty().isEmpty());
+            saveButton.disableProperty().bind(formValid);
             
-            totalAmountField.textProperty().addListener((observable, oldValue, newValue) -> {
-                saveButton.setDisable(newValue.trim().isEmpty() || 
-                                     invoiceNumberField.getText().trim().isEmpty() ||
-                                     supplierNameField.getText().trim().isEmpty());
-            });
-            
-            // Convert result to Invoice
-            dialog.setResultConverter(dialogButton -> {
-                if (dialogButton == saveButtonType) {
-                    try {
-                        Invoice invoice = new Invoice();
-                        invoice.setInvoiceNumber(invoiceNumberField.getText().trim());
-                        invoice.setSupplierName(supplierNameField.getText().trim());
-                        invoice.setSupplierCui(supplierCuiField.getText().trim());
-                        invoice.setInvoiceDate(invoiceDatePicker.getValue().atStartOfDay());
-                        invoice.setTotalAmount(new BigDecimal(totalAmountField.getText().trim()));
-                        invoice.setCurrency(currencyCombo.getValue());
-                        invoice.setIsSpvImported(false); // Manual invoice
-                        invoice.setStatus("MANUAL");
-                        invoice.setImportDate(LocalDateTime.now());
-                        invoice.setNumberOfLines(0); // Will be updated when lines are added
-                        
-                        return invoice;
-                    } catch (NumberFormatException e) {
-                        showError("Valoarea totală trebuie să fie un număr valid!");
-                        return null;
-                    }
-                }
-                return null;
-            });
-            
-            // Show dialog and process result
-            java.util.Optional<Invoice> result = dialog.showAndWait();
-            
-            result.ifPresent(invoice -> {
+            saveButton.setOnAction(e -> {
                 try {
-                    // Save invoice
-                    Invoice savedInvoice = invoiceService.saveInvoice(invoice);
+                    if (invoiceLines.isEmpty()) {
+                        showError("Adăugați cel puțin un produs pe factură!");
+                        return;
+                    }
+                    
+                    // Create invoice
+                    Invoice invoice = new Invoice();
+                    invoice.setInvoiceNumber(invoiceNumberField.getText().trim());
+                    invoice.setSupplierName(supplierNameField.getText().trim());
+                    invoice.setSupplierCui(supplierCuiField.getText().trim());
+                    invoice.setInvoiceDate(invoiceDatePicker.getValue().atStartOfDay());
+                    invoice.setCurrency(currencyCombo.getValue());
+                    invoice.setIsSpvImported(false);
+                    invoice.setStatus("MANUAL");
+                    invoice.setImportDate(LocalDateTime.now());
+                    
+                    // Save invoice with lines
+                    Invoice savedInvoice = invoiceService.saveInvoiceWithLines(invoice, invoiceLines);
                     
                     // Reload invoices
                     loadInvoices();
                     updateStatistics();
                     
-                    showSuccessMessage("Factura a fost creată cu succes!\n" +
-                                     "Număr: " + savedInvoice.getInvoiceNumber() + "\n" +
-                                     "Furnizor: " + savedInvoice.getSupplierName() + "\n" +
-                                     "Valoare: " + savedInvoice.getTotalAmount() + " " + savedInvoice.getCurrency() + "\n\n" +
-                                     "Puteți adăuga linii de factură și produse în modulul de inventar.");
+                    dialogStage.close();
                     
-                    logger.info("Manual invoice created: {}", savedInvoice.getInvoiceNumber());
+                    showSuccessMessage(String.format(
+                        "Factura a fost creată cu succes!\n\n" +
+                        "Număr: %s\n" +
+                        "Furnizor: %s\n" +
+                        "Produse: %d\n" +
+                        "Valoare totală: %.2f %s",
+                        savedInvoice.getInvoiceNumber(),
+                        savedInvoice.getSupplierName(),
+                        savedInvoice.getNumberOfLines(),
+                        savedInvoice.getTotalAmount(),
+                        savedInvoice.getCurrency()
+                    ));
                     
-                } catch (Exception e) {
-                    logger.error("Error saving manual invoice", e);
-                    showError("Eroare la salvarea facturii: " + e.getMessage());
+                    logger.info("Manual invoice created: {} with {} lines", 
+                        savedInvoice.getInvoiceNumber(), savedInvoice.getNumberOfLines());
+                    
+                } catch (Exception ex) {
+                    logger.error("Error saving manual invoice", ex);
+                    showError("Eroare la salvarea facturii: " + ex.getMessage());
                 }
             });
+            
+            cancelButton.setOnAction(e -> dialogStage.close());
+            
+            bottomBox.getChildren().addAll(saveButton, cancelButton);
+            mainPane.setBottom(bottomBox);
+            
+            // Show dialog
+            javafx.scene.Scene scene = new javafx.scene.Scene(mainPane);
+            dialogStage.setScene(scene);
+            dialogStage.showAndWait();
             
         } catch (Exception e) {
             logger.error("Error creating manual invoice dialog", e);
             showError("Eroare la crearea facturii manuale: " + e.getMessage());
         }
+    }
+    
+    private void showAddLineDialog(ObservableList<com.bakerymanager.entity.InvoiceLine> invoiceLines,
+                                     javafx.scene.control.TableView<com.bakerymanager.entity.InvoiceLine> table) {
+        javafx.scene.control.Dialog<com.bakerymanager.entity.InvoiceLine> dialog = new javafx.scene.control.Dialog<>();
+        dialog.setTitle("Adaugă Produs");
+        dialog.setHeaderText("Introduceți detaliile produsului");
+        
+        javafx.scene.control.ButtonType addButtonType = new javafx.scene.control.ButtonType("Adaugă", javafx.scene.control.ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(addButtonType, javafx.scene.control.ButtonType.CANCEL);
+        
+        javafx.scene.layout.GridPane grid = new javafx.scene.layout.GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new javafx.geometry.Insets(20, 150, 10, 10));
+        
+        javafx.scene.control.TextField productNameField = new javafx.scene.control.TextField();
+        productNameField.setPromptText("Nume produs");
+        
+        javafx.scene.control.TextField quantityField = new javafx.scene.control.TextField();
+        quantityField.setPromptText("Cantitate");
+        
+        javafx.scene.control.TextField priceField = new javafx.scene.control.TextField();
+        priceField.setPromptText("Preț unitar");
+        
+        javafx.scene.control.ComboBox<com.bakerymanager.entity.InvoiceLine.ProductType> typeCombo = new javafx.scene.control.ComboBox<>();
+        typeCombo.getItems().addAll(com.bakerymanager.entity.InvoiceLine.ProductType.values());
+        typeCombo.setValue(com.bakerymanager.entity.InvoiceLine.ProductType.MATERIE_PRIMA);
+        typeCombo.setConverter(new javafx.util.StringConverter<com.bakerymanager.entity.InvoiceLine.ProductType>() {
+            @Override
+            public String toString(com.bakerymanager.entity.InvoiceLine.ProductType type) {
+                return type != null ? type.getDisplayName() : "";
+            }
+            
+            @Override
+            public com.bakerymanager.entity.InvoiceLine.ProductType fromString(String string) {
+                return typeCombo.getItems().stream()
+                    .filter(type -> type.getDisplayName().equals(string))
+                    .findFirst()
+                    .orElse(null);
+            }
+        });
+        
+        grid.add(new javafx.scene.control.Label("Nume Produs:"), 0, 0);
+        grid.add(productNameField, 1, 0);
+        grid.add(new javafx.scene.control.Label("Cantitate:"), 0, 1);
+        grid.add(quantityField, 1, 1);
+        grid.add(new javafx.scene.control.Label("Preț Unitar:"), 0, 2);
+        grid.add(priceField, 1, 2);
+        grid.add(new javafx.scene.control.Label("Tip Produs:"), 0, 3);
+        grid.add(typeCombo, 1, 3);
+        
+        dialog.getDialogPane().setContent(grid);
+        
+        // Validation
+        javafx.scene.Node addButton = dialog.getDialogPane().lookupButton(addButtonType);
+        addButton.setDisable(true);
+        
+        productNameField.textProperty().addListener((observable, oldValue, newValue) -> {
+            addButton.setDisable(newValue.trim().isEmpty() || 
+                                quantityField.getText().trim().isEmpty() ||
+                                priceField.getText().trim().isEmpty());
+        });
+        
+        quantityField.textProperty().addListener((observable, oldValue, newValue) -> {
+            addButton.setDisable(newValue.trim().isEmpty() || 
+                                productNameField.getText().trim().isEmpty() ||
+                                priceField.getText().trim().isEmpty());
+        });
+        
+        priceField.textProperty().addListener((observable, oldValue, newValue) -> {
+            addButton.setDisable(newValue.trim().isEmpty() || 
+                                productNameField.getText().trim().isEmpty() ||
+                                quantityField.getText().trim().isEmpty());
+        });
+        
+        dialog.setResultConverter(dialogButton -> {
+            if (dialogButton == addButtonType) {
+                try {
+                    com.bakerymanager.entity.InvoiceLine line = new com.bakerymanager.entity.InvoiceLine();
+                    line.setProductName(productNameField.getText().trim());
+                    line.setQuantity(new BigDecimal(quantityField.getText().trim()));
+                    line.setUnitPrice(new BigDecimal(priceField.getText().trim()));
+                    line.setProductType(typeCombo.getValue());
+                    line.calculateTotal();
+                    
+                    // Create or find ingredient for this product
+                    com.bakerymanager.entity.Ingredient ingredient = new com.bakerymanager.entity.Ingredient();
+                    ingredient.setName(line.getProductName());
+                    ingredient.setCurrentStock(BigDecimal.ZERO);
+                    ingredient.setMinimumStock(BigDecimal.ZERO);
+                    ingredient.setLastPurchasePrice(line.getUnitPrice());
+                    ingredient.setUnitOfMeasure(com.bakerymanager.entity.Ingredient.UnitOfMeasure.BUC);
+                    line.setIngredient(ingredient);
+                    
+                    return line;
+                } catch (NumberFormatException e) {
+                    showError("Cantitatea și prețul trebuie să fie numere valide!");
+                    return null;
+                }
+            }
+            return null;
+        });
+        
+        java.util.Optional<com.bakerymanager.entity.InvoiceLine> result = dialog.showAndWait();
+        result.ifPresent(line -> {
+            invoiceLines.add(line);
+            table.refresh();
+        });
     }
     
     private void showSuccessMessage(String message) {
