@@ -279,7 +279,25 @@ public class ProductionController {
     }
     
     private void refreshProductionHistory() {
-        productionHistory.clear();
+        try {
+            productionHistory.clear();
+            List<com.bakerymanager.entity.ProductionReport> reports = productionService.getAllProductionReports();
+            
+            for (com.bakerymanager.entity.ProductionReport report : reports) {
+                ProductionRecord record = new ProductionRecord(
+                    report.getProductionDate(),
+                    report.getProduct() != null ? report.getProduct().getName() : "Necunoscut",
+                    report.getQuantityProduced(),
+                    report.getStatus()
+                );
+                productionHistory.add(record);
+            }
+            
+            logger.info("Loaded {} production reports", reports.size());
+        } catch (Exception e) {
+            logger.error("Error loading production history", e);
+            showError("Eroare la încărcarea istoricului: " + e.getMessage());
+        }
     }
 
     @FXML
@@ -568,12 +586,8 @@ public class ProductionController {
             
             productionService.executeProduction(selectedProduct.getId(), quantity);
             
-            productionHistory.add(0, new ProductionRecord(
-                LocalDateTime.now(),
-                selectedProduct.getName(),
-                quantity,
-                "Succes"
-            ));
+            // Reload production history from database
+            refreshProductionHistory();
             
             loadProducts();
             loadRecipe();
