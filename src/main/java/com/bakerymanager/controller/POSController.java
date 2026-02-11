@@ -9,6 +9,7 @@ import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.TilePane;
+import javafx.scene.layout.GridPane;
 import javafx.scene.text.Font;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -242,6 +243,206 @@ public class POSController {
             .toList();
         
         displayProducts(filtered);
+    }
+    
+    @FXML
+    public void addProductManually() {
+        Dialog<ManualEntryResult> dialog = new Dialog<>();
+        dialog.setTitle("Introduceți Produs Manual");
+        dialog.setHeaderText("Căutați și selectați un produs pentru a-l adăuga în coș");
+        
+        // Buttons
+        ButtonType addButtonType = new ButtonType("Adaugă în Coș", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(addButtonType, ButtonType.CANCEL);
+        
+        // Create form
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new javafx.geometry.Insets(20, 150, 10, 10));
+        
+        // Search field with autocomplete
+        TextField searchField = new TextField();
+        searchField.setPromptText("Nume produs sau cod bare...");
+        
+        // Product selection
+        ComboBox<Product> productCombo = new ComboBox<>();
+        productCombo.setPromptText("Selectați produs");
+        productCombo.setPrefWidth(250);
+        productCombo.setItems(FXCollections.observableArrayList(availableProducts));
+        
+        // Custom display for combo box
+        productCombo.setConverter(new javafx.util.StringConverter<Product>() {
+            @Override
+            public String toString(Product product) {
+                if (product == null) return "";
+                return product.getName() + " - " + product.getSalePrice() + " lei (Stoc: " + product.getPhysicalStock() + ")";
+            }
+            
+            @Override
+            public Product fromString(String string) {
+                return null;
+            }
+        });
+        
+        // Quantity field
+        TextField quantityField = new TextField("1");
+        quantityField.setPromptText("Cantitate");
+        
+        // Stock info label
+        Label stockInfoLabel = new Label("");
+        stockInfoLabel.setStyle("-fx-text-fill: #666;");
+        
+        // Price info label
+        Label priceInfoLabel = new Label("");
+        priceInfoLabel.setStyle("-fx-font-weight: bold;");
+        
+        // Search functionality
+        searchField.textProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal == null || newVal.trim().isEmpty()) {
+                productCombo.setItems(FXCollections.observableArrayList(availableProducts));
+            } else {
+                String searchLower = newVal.toLowerCase();
+                List<Product> filtered = availableProducts.stream()
+                    .filter(p -> 
+                        p.getName().toLowerCase().contains(searchLower) ||
+                        (p.getBarcode() != null && p.getBarcode().contains(searchLower))
+                    )
+                    .toList();
+                productCombo.setItems(FXCollections.observableArrayList(filtered));
+                
+                // Auto-select if only one match
+                if (filtered.size() == 1) {
+                    productCombo.setValue(filtered.get(0));
+                }
+            }
+        });
+        
+        // Update info when product selected
+        productCombo.valueProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal != null) {
+                stockInfoLabel.setText("Stoc disponibil: " + newVal.getPhysicalStock() + " " + 
+                                      (newVal.getPhysicalStock().compareTo(BigDecimal.ONE) <= 0 ? "(LIMITAT)" : ""));
+                updatePriceInfo(priceInfoLabel, newVal, quantityField.getText());
+                
+                if (newVal.getPhysicalStock().compareTo(BigDecimal.ZERO) <= 0) {
+                    stockInfoLabel.setStyle("-fx-text-fill: red; -fx-font-weight: bold;");
+                } else if (newVal.getPhysicalStock().compareTo(BigDecimal.valueOf(5)) < 0) {
+                    stockInfoLabel.setStyle("-fx-text-fill: orange; -fx-font-weight: bold;");
+                } else {
+                    stockInfoLabel.setStyle("-fx-text-fill: green;");
+                }
+            } else {
+                stockInfoLabel.setText("");
+                priceInfoLabel.setText("");
+            }
+        });
+        
+        // Update price when quantity changes
+        quantityField.textProperty().addListener((obs, oldVal, newVal) -> {
+            Product selectedProduct = productCombo.getValue();
+            if (selectedProduct != null) {
+                updatePriceInfo(priceInfoLabel, selectedProduct, newVal);
+            }
+        });
+        
+        // Build grid
+        grid.add(new Label("Căutare:"), 0, 0);
+        grid.add(searchField, 1, 0);
+        
+        grid.add(new Label("Produs:"), 0, 1);
+        grid.add(productCombo, 1, 1);
+        
+        grid.add(new Label("Cantitate:"), 0, 2);
+        grid.add(quantityField, 1, 2);
+        
+        grid.add(stockInfoLabel, 1, 3);
+        grid.add(priceInfoLabel, 1, 4);
+        
+        dialog.getDialogPane().setContent(grid);
+        
+        // Disable add button if no product selected
+        javafx.scene.Node addButton = dialog.getDialogPane().lookupButton(addButtonType);
+        addButton.setDisable(true);
+        
+        productCombo.valueProperty().addListener((obs, oldVal, newVal) -> {
+            addButton.setDisable(newVal == null);
+        });
+        
+        // Convert result
+        dialog.setResultConverter(dialogButton -> {
+            if (dialogButton == addButtonType) {
+                Product selectedProduct = productCombo.getValue();
+                if (selectedProduct == null) {
+                    return null;
+                }
+                
+                try {
+                    BigDecimal quantity = new BigDecimal(quantityField.getText().trim());
+                    if (quantity.compareTo(BigDecimal.ZERO) <= 0) {
+                        showError("Cantitatea trebuie să fie mai mare decât 0!");
+                        return null;
+                    }
+                    
+                    if (quantity.compareTo(selectedProduct.getPhysicalStock()) > 0) {
+                        showError("Stoc insuficient! Disponibil: " + selectedProduct.getPhysicalStock());
+                        return null;
+                    }
+                    
+                    return new ManualEntryResult(selectedProduct, quantity);
+                } catch (NumberFormatException e) {
+                    showError("Cantitate invalidă!");
+                    return null;
+                }
+            }
+            return null;
+        });
+        
+        // Show dialog and process result
+        dialog.showAndWait().ifPresent(result -> {
+            addToCartWithQuantity(result.product, result.quantity);
+            posStatusLabel.setText("✅ Adăugat: " + result.product.getName() + " x " + result.quantity);
+        });
+    }
+    
+    private void updatePriceInfo(Label priceLabel, Product product, String quantityText) {
+        try {
+            BigDecimal quantity = new BigDecimal(quantityText.trim());
+            BigDecimal total = product.getSalePrice().multiply(quantity).setScale(2, RoundingMode.HALF_UP);
+            priceLabel.setText("Total: " + total + " lei");
+        } catch (NumberFormatException e) {
+            priceLabel.setText("Cantitate invalidă");
+        }
+    }
+    
+    private void addToCartWithQuantity(Product product, BigDecimal quantity) {
+        if (product.getPhysicalStock().compareTo(quantity) < 0) {
+            showError("Stoc epuizat pentru: " + product.getName());
+            return;
+        }
+        
+        Optional<CartItem> existingItem = cartItems.stream()
+            .filter(item -> item.getProduct().getId().equals(product.getId()))
+            .findFirst();
+        
+        if (existingItem.isPresent()) {
+            existingItem.get().addQuantity(quantity);
+        } else {
+            cartItems.add(new CartItem(product, quantity));
+        }
+        
+        updateCartSummary();
+    }
+    
+    // Helper class for manual entry dialog result
+    private static class ManualEntryResult {
+        final Product product;
+        final BigDecimal quantity;
+        
+        ManualEntryResult(Product product, BigDecimal quantity) {
+            this.product = product;
+            this.quantity = quantity;
+        }
     }
     
     @FXML

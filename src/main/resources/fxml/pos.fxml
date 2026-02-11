@@ -26,6 +26,7 @@
                 <Label text="Categorii:" styleClass="label-subtitle"/>
                 <ComboBox fx:id="categoryComboBox" promptText="Toate produsele" prefWidth="150"/>
                 <Button text="🔄 Reîncarcă Produse" onAction="#loadProducts" styleClass="button, primary"/>
+                <Button text="➕ Introduceți Manual" onAction="#addProductManually" styleClass="button, success"/>
             </HBox>
         </VBox>
     </top>
