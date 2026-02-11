@@ -1,11 +1,13 @@
 package com.bakerymanager.controller;
 
 import com.bakerymanager.entity.Product;
+import com.bakerymanager.entity.ProductionReport;
 import com.bakerymanager.entity.RecipeItem;
 import com.bakerymanager.entity.Ingredient;
 import com.bakerymanager.service.IngredientService;
 import com.bakerymanager.service.ProductionService;
 import com.bakerymanager.service.ProductService;
+import com.bakerymanager.service.PdfService;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -14,10 +16,12 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
 import javafx.geometry.Insets;
+import javafx.stage.FileChooser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
 
+import java.io.File;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -32,13 +36,16 @@ public class ProductionController {
     private final ProductionService productionService;
     private final ProductService productService;
     private final IngredientService ingredientService;
+    private final PdfService pdfService;
     
     public ProductionController(ProductionService productionService, 
                               ProductService productService,
-                              IngredientService ingredientService) {
+                              IngredientService ingredientService,
+                              PdfService pdfService) {
         this.productionService = productionService;
         this.productService = productService;
         this.ingredientService = ingredientService;
+        this.pdfService = pdfService;
     }
     
     @FXML
@@ -98,12 +105,25 @@ public class ProductionController {
         private String productName;
         private BigDecimal quantity;
         private String status;
+        private ProductionReport report; // Store the actual report entity
         
         public ProductionRecord(LocalDateTime date, String productName, BigDecimal quantity, String status) {
             this.date = date;
             this.productName = productName;
             this.quantity = quantity;
             this.status = status;
+        }
+        
+        public ProductionRecord(ProductionReport report) {
+            this.report = report;
+            this.date = report.getProductionDate();
+            this.productName = report.getProduct() != null ? report.getProduct().getName() : "";
+            this.quantity = report.getQuantityProduced();
+            this.status = report.getStatus() != null ? report.getStatus().name() : "";
+        }
+        
+        public ProductionReport getReport() {
+            return report;
         }
         
         public String getFormattedDate() {
@@ -284,12 +304,7 @@ public class ProductionController {
             List<com.bakerymanager.entity.ProductionReport> reports = productionService.getAllProductionReports();
             
             for (com.bakerymanager.entity.ProductionReport report : reports) {
-                ProductionRecord record = new ProductionRecord(
-                    report.getProductionDate(),
-                    report.getProduct() != null ? report.getProduct().getName() : "Necunoscut",
-                    report.getQuantityProduced(),
-                    report.getStatus() != null ? report.getStatus().getDisplayName() : "Necunoscut"
-                );
+                ProductionRecord record = new ProductionRecord(report);
                 productionHistory.add(record);
             }
             
@@ -838,6 +853,54 @@ public class ProductionController {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.show();
+    }
+    
+    @FXML
+    public void exportProductionReportPdf() {
+        try {
+            // Get selected production record from history table
+            ProductionRecord selectedRecord = productionHistoryTable.getSelectionModel().getSelectedItem();
+            
+            if (selectedRecord == null) {
+                showError("Vă rugăm să selectați un raport de producție din istoric.");
+                return;
+            }
+            
+            ProductionReport selectedReport = selectedRecord.getReport();
+            if (selectedReport == null) {
+                showError("Raportul de producție selectat nu are date complete.");
+                return;
+            }
+            
+            // Create file chooser
+            FileChooser fileChooser = new FileChooser();
+            fileChooser.setTitle("Salvează Raport de Producție PDF");
+            
+            // Set default filename
+            String productName = selectedReport.getProduct() != null ? selectedReport.getProduct().getName() : "Produs";
+            String date = selectedReport.getProductionDate().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+            fileChooser.setInitialFileName("Raport_Productie_" + productName + "_" + date + ".pdf");
+            
+            // Set extension filter
+            fileChooser.getExtensionFilters().add(
+                new FileChooser.ExtensionFilter("PDF Files", "*.pdf")
+            );
+            
+            // Show save dialog
+            File file = fileChooser.showSaveDialog(productionHistoryTable.getScene().getWindow());
+            
+            if (file != null) {
+                // Generate PDF
+                pdfService.generateProductionReportPdf(selectedReport, file.getAbsolutePath());
+                
+                showSuccessMessage("Raport exportat cu succes în: " + file.getAbsolutePath());
+                logger.info("Production report exported to PDF: {}", file.getAbsolutePath());
+            }
+            
+        } catch (Exception e) {
+            logger.error("Error exporting production report to PDF", e);
+            showError("Eroare la exportarea raportului: " + e.getMessage());
+        }
     }
     
     private void showError(String message) {

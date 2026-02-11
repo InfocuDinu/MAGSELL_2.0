@@ -5,7 +5,8 @@
 <?import javafx.geometry.Insets?>
 
 <BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
-            fx:controller="com.bakerymanager.controller.ProductionController">
+            fx:controller="com.bakerymanager.controller.ProductionController"
+            stylesheets="@../css/style.css">
     
     <padding>
         <Insets top="20" right="20" bottom="20" left="20"/>
@@ -89,6 +90,7 @@
             <Label fx:id="productionInfoLabel" text="Selectați un produs pentru a începe producția"/>
             <Region HBox.hgrow="ALWAYS"/>
             <Button text="Raport Producție" onAction="#showProductionReport"/>
+            <Button text="📄 Export PDF" onAction="#exportProductionReportPdf" styleClass="button, success"/>
         </HBox>
     </bottom>
     

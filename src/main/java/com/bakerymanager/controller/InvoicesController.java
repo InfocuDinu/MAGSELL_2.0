@@ -3,8 +3,11 @@ package com.bakerymanager.controller;
 import com.bakerymanager.dto.UBLInvoiceDto;
 import com.bakerymanager.entity.Invoice;
 import com.bakerymanager.entity.Ingredient;
+import com.bakerymanager.entity.ReceptionNote;
 import com.bakerymanager.service.InvoiceService;
 import com.bakerymanager.service.IngredientService;
+import com.bakerymanager.service.ReceptionNoteService;
+import com.bakerymanager.service.PdfService;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -37,10 +40,15 @@ public class InvoicesController {
     
     private final InvoiceService invoiceService;
     private final IngredientService ingredientService;
+    private final ReceptionNoteService receptionNoteService;
+    private final PdfService pdfService;
     
-    public InvoicesController(InvoiceService invoiceService, IngredientService ingredientService) {
+    public InvoicesController(InvoiceService invoiceService, IngredientService ingredientService,
+                             ReceptionNoteService receptionNoteService, PdfService pdfService) {
         this.invoiceService = invoiceService;
         this.ingredientService = ingredientService;
+        this.receptionNoteService = receptionNoteService;
+        this.pdfService = pdfService;
     }
     
     @FXML
@@ -73,12 +81,40 @@ public class InvoicesController {
     @FXML
     private TableColumn<Invoice, Void> actionsColumn;
     
+    // NIR Table
+    @FXML
+    private TableView<ReceptionNote> nirTable;
+    
+    @FXML
+    private TableColumn<ReceptionNote, String> nirNumberColumn;
+    
+    @FXML
+    private TableColumn<ReceptionNote, String> nirInvoiceColumn;
+    
+    @FXML
+    private TableColumn<ReceptionNote, String> nirDateColumn;
+    
+    @FXML
+    private TableColumn<ReceptionNote, String> nirStatusColumn;
+    
+    @FXML
+    private TableColumn<ReceptionNote, String> nirSupplierColumn;
+    
+    @FXML
+    private TableColumn<ReceptionNote, BigDecimal> nirTotalColumn;
+    
+    @FXML
+    private TableColumn<ReceptionNote, Void> nirActionsColumn;
+    
     private ObservableList<Invoice> invoices = FXCollections.observableArrayList();
+    private ObservableList<ReceptionNote> receptionNotes = FXCollections.observableArrayList();
     
     @FXML
     public void initialize() {
         setupTable();
+        setupNIRTable();
         loadInvoices();
+        loadReceptionNotes();
         updateStatistics();
         logger.info("Invoices controller initialized");
     }
@@ -655,6 +691,163 @@ public class InvoicesController {
         } catch (Exception e) {
             logger.error("Error creating ingredient: {}", ingredientName, e);
             throw new RuntimeException("Nu s-a putut crea produsul: " + ingredientName + ". " + e.getMessage(), e);
+        }
+    }
+    
+    // NIR Management Methods
+    
+    @FXML
+    public void generateNIR() {
+        try {
+            Invoice selectedInvoice = invoicesTable.getSelectionModel().getSelectedItem();
+            
+            if (selectedInvoice == null) {
+                showError("Vă rugăm să selectați o factură din tabel.");
+                return;
+            }
+            
+            // Create NIR from invoice
+            ReceptionNote nir = receptionNoteService.createFromInvoice(
+                selectedInvoice.getId(),
+                "MAGSELL 2.0 - BakeryManager Pro",
+                "Str. Exemplu Nr. 1, București"
+            );
+            
+            showSuccessMessage("NIR generat cu succes!\nNumăr NIR: " + nir.getNirNumber());
+            logger.info("NIR generated: {} for invoice: {}", nir.getNirNumber(), selectedInvoice.getInvoiceNumber());
+            
+            // Refresh NIR list
+            loadReceptionNotes();
+            
+        } catch (Exception e) {
+            logger.error("Error generating NIR", e);
+            showError("Eroare la generarea NIR: " + e.getMessage());
+        }
+    }
+    
+    @FXML
+    public void loadReceptionNotes() {
+        try {
+            List<ReceptionNote> notes = receptionNoteService.getAllReceptionNotes();
+            receptionNotes.clear();
+            receptionNotes.addAll(notes);
+            
+            if (nirTable != null) {
+                nirTable.setItems(receptionNotes);
+            }
+            
+            logger.info("Loaded {} reception notes", notes.size());
+        } catch (Exception e) {
+            logger.error("Error loading reception notes", e);
+            showError("Eroare la încărcarea NIR-urilor: " + e.getMessage());
+        }
+    }
+    
+    private void setupNIRTable() {
+        if (nirTable == null) {
+            return;
+        }
+        
+        // Setup columns
+        nirNumberColumn.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("nirNumber"));
+        nirInvoiceColumn.setCellValueFactory(param -> 
+            new javafx.beans.property.SimpleObjectProperty<>(
+                param.getValue().getInvoice() != null ? param.getValue().getInvoice().getInvoiceNumber() : ""
+            )
+        );
+        nirDateColumn.setCellValueFactory(param -> 
+            new javafx.beans.property.SimpleObjectProperty<>(
+                param.getValue().getNirDate() != null ? 
+                param.getValue().getNirDate().format(DateTimeFormatter.ofPattern("dd.MM.yyyy")) : ""
+            )
+        );
+        nirStatusColumn.setCellValueFactory(param -> 
+            new javafx.beans.property.SimpleObjectProperty<>(
+                param.getValue().getStatus() != null ? param.getValue().getStatus().name() : ""
+            )
+        );
+        nirSupplierColumn.setCellValueFactory(param -> 
+            new javafx.beans.property.SimpleObjectProperty<>(
+                param.getValue().getInvoice() != null ? param.getValue().getInvoice().getSupplierName() : ""
+            )
+        );
+        nirTotalColumn.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("totalValue"));
+        
+        // Setup action buttons column
+        nirActionsColumn.setCellFactory(param -> new javafx.scene.control.TableCell<>() {
+            private final javafx.scene.control.Button viewBtn = new javafx.scene.control.Button("👁️ View");
+            private final javafx.scene.control.Button pdfBtn = new javafx.scene.control.Button("📄 PDF");
+            private final javafx.scene.layout.HBox pane = new javafx.scene.layout.HBox(5, viewBtn, pdfBtn);
+            
+            {
+                viewBtn.setOnAction(event -> {
+                    ReceptionNote nir = getTableView().getItems().get(getIndex());
+                    viewReceptionNote(nir);
+                });
+                
+                pdfBtn.setOnAction(event -> {
+                    ReceptionNote nir = getTableView().getItems().get(getIndex());
+                    exportReceptionNotePdf(nir);
+                });
+            }
+            
+            @Override
+            protected void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                setGraphic(empty ? null : pane);
+            }
+        });
+        
+        nirTable.setItems(receptionNotes);
+    }
+    
+    private void viewReceptionNote(ReceptionNote nir) {
+        try {
+            javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.INFORMATION);
+            alert.setTitle("Detalii NIR");
+            alert.setHeaderText("NIR: " + nir.getNirNumber());
+            
+            StringBuilder content = new StringBuilder();
+            content.append("Data NIR: ").append(nir.getNirDate().format(DateTimeFormatter.ofPattern("dd.MM.yyyy"))).append("\n");
+            content.append("Status: ").append(nir.getStatus()).append("\n");
+            content.append("Furnizor: ").append(nir.getInvoice() != null ? nir.getInvoice().getSupplierName() : "").append("\n");
+            content.append("Factură: ").append(nir.getInvoice() != null ? nir.getInvoice().getInvoiceNumber() : "").append("\n");
+            content.append("Total: ").append(nir.getTotalValue()).append(" lei\n");
+            
+            if (nir.getHasDiscrepancies()) {
+                content.append("\n⚠️ Diferențe constatate!\n");
+                content.append("Note: ").append(nir.getDiscrepanciesNotes());
+            }
+            
+            alert.setContentText(content.toString());
+            alert.showAndWait();
+            
+        } catch (Exception e) {
+            logger.error("Error viewing NIR", e);
+            showError("Eroare la vizualizarea NIR: " + e.getMessage());
+        }
+    }
+    
+    private void exportReceptionNotePdf(ReceptionNote nir) {
+        try {
+            FileChooser fileChooser = new FileChooser();
+            fileChooser.setTitle("Salvează NIR PDF");
+            fileChooser.setInitialFileName(nir.getNirNumber() + ".pdf");
+            fileChooser.getExtensionFilters().add(
+                new FileChooser.ExtensionFilter("PDF Files", "*.pdf")
+            );
+            
+            File file = fileChooser.showSaveDialog(nirTable.getScene().getWindow());
+            
+            if (file != null) {
+                pdfService.generateReceptionNotePdf(nir, file.getAbsolutePath());
+                showSuccessMessage("NIR exportat cu succes în: " + file.getAbsolutePath());
+                logger.info("NIR exported to PDF: {}", file.getAbsolutePath());
+            }
+            
+        } catch (Exception e) {
+            logger.error("Error exporting NIR to PDF", e);
+            showError("Eroare la exportarea NIR: " + e.getMessage());
         }
     }
     
