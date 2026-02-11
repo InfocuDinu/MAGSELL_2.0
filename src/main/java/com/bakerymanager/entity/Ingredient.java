@@ -46,11 +46,31 @@ public class Ingredient {
     @Column(name = "batch_date")
     private LocalDate batchDate;
     
+    // NEW: Product type classification (raw material or merchandise)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "product_type", length = 20)
+    private ProductType productType;
+    
     @Column(name = "created_at")
     private LocalDateTime createdAt;
     
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+    
+    public enum ProductType {
+        MATERIE_PRIMA("Materie Primă"),
+        MARFA("Marfă");
+        
+        private final String displayName;
+        
+        ProductType(String displayName) {
+            this.displayName = displayName;
+        }
+        
+        public String getDisplayName() {
+            return displayName;
+        }
+    }
     
     public enum UnitOfMeasure {
         KG("Kilogram"),
@@ -79,6 +99,9 @@ public class Ingredient {
         }
         if (minimumStock == null) {
             minimumStock = BigDecimal.ZERO;
+        }
+        if (productType == null) {
+            productType = ProductType.MATERIE_PRIMA; // Default to raw material
         }
     }
     
@@ -120,6 +143,9 @@ public class Ingredient {
     
     public LocalDate getBatchDate() { return batchDate; }
     public void setBatchDate(LocalDate batchDate) { this.batchDate = batchDate; }
+    
+    public ProductType getProductType() { return productType; }
+    public void setProductType(ProductType productType) { this.productType = productType; }
     
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

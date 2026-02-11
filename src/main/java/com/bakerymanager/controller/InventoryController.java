@@ -33,6 +33,9 @@ public class InventoryController {
     private TextField nameField;
     
     @FXML
+    private ComboBox<Ingredient.ProductType> productTypeCombo;
+    
+    @FXML
     private TextField quantityField;
     
     @FXML
@@ -62,11 +65,33 @@ public class InventoryController {
     
     @FXML
     public void initialize() {
+        setupProductTypeComboBox();
         setupUnitComboBox();
         setupTable();
         loadIngredients();
         updateStatistics();
         logger.info("Inventory controller initialized");
+    }
+    
+    private void setupProductTypeComboBox() {
+        productTypeCombo.setItems(FXCollections.observableArrayList(Ingredient.ProductType.values()));
+        productTypeCombo.setValue(Ingredient.ProductType.MATERIE_PRIMA); // Default value
+        
+        // Custom display using StringConverter
+        productTypeCombo.setConverter(new javafx.util.StringConverter<Ingredient.ProductType>() {
+            @Override
+            public String toString(Ingredient.ProductType type) {
+                return type != null ? type.getDisplayName() : "";
+            }
+            
+            @Override
+            public Ingredient.ProductType fromString(String string) {
+                return productTypeCombo.getItems().stream()
+                    .filter(type -> type.getDisplayName().equals(string))
+                    .findFirst()
+                    .orElse(null);
+            }
+        });
     }
     
     private void setupUnitComboBox() {
@@ -133,6 +158,8 @@ public class InventoryController {
     private void populateForm(Ingredient ingredient) {
         selectedIngredient = ingredient;
         nameField.setText(ingredient.getName());
+        productTypeCombo.setValue(ingredient.getProductType() != null ? 
+            ingredient.getProductType() : Ingredient.ProductType.MATERIE_PRIMA);
         quantityField.setText(ingredient.getCurrentStock().toString());
         unitCombo.setValue(ingredient.getUnitOfMeasure());
         if (ingredient.getLastPurchasePrice() != null) {
@@ -157,7 +184,7 @@ public class InventoryController {
     public void addIngredient() {
         clearForm();
         nameField.requestFocus();
-        setStatus("Gata pentru adăugare ingredient nou");
+        setStatus("Gata pentru adăugare produs nou");
     }
     
     @FXML
@@ -165,12 +192,17 @@ public class InventoryController {
         try {
             // Validate required fields
             if (nameField.getText() == null || nameField.getText().trim().isEmpty()) {
-                showError("Numele ingredientului este obligatoriu!");
+                showError("Numele produsului este obligatoriu!");
                 return;
             }
             
             if (unitCombo.getValue() == null) {
                 showError("Unitatea de măsură este obligatorie!");
+                return;
+            }
+            
+            if (productTypeCombo.getValue() == null) {
+                showError("Tipul produsului este obligatoriu!");
                 return;
             }
             
@@ -181,6 +213,7 @@ public class InventoryController {
             Ingredient ingredient = selectedIngredient != null ? selectedIngredient : new Ingredient();
             ingredient.setName(nameField.getText().trim());
             ingredient.setUnitOfMeasure(unitCombo.getValue());
+            ingredient.setProductType(productTypeCombo.getValue());
             
             // Parse numeric fields
             BigDecimal quantity = parseDecimalField(quantityField, "Cantitatea");
@@ -209,13 +242,13 @@ public class InventoryController {
             updateStatistics();
             clearForm();
             
-            String message = isUpdate ? "Ingredient actualizat cu succes!" : "Ingredient adăugat cu succes!";
+            String message = isUpdate ? "Produs actualizat cu succes!" : "Produs adăugat cu succes!";
             showSuccessMessage(message);
             setStatus(message);
             
         } catch (Exception e) {
             logger.error("Error saving ingredient", e);
-            showError("Eroare la salvarea ingredientului: " + e.getMessage());
+            showError("Eroare la salvarea produsului: " + e.getMessage());
         }
     }
     
@@ -271,6 +304,7 @@ public class InventoryController {
     public void clearForm() {
         selectedIngredient = null;
         nameField.clear();
+        productTypeCombo.setValue(Ingredient.ProductType.MATERIE_PRIMA); // Reset to default
         quantityField.clear();
         unitCombo.setValue(null);
         priceField.clear();
@@ -282,7 +316,7 @@ public class InventoryController {
     
     private void updateStatistics() {
         List<Ingredient> ingredients = ingredientService.getAllIngredients();
-        totalIngredientsLabel.setText("Total ingrediente: " + ingredients.size());
+        totalIngredientsLabel.setText("Total produse: " + ingredients.size());
     }
     
     private void setStatus(String message) {
