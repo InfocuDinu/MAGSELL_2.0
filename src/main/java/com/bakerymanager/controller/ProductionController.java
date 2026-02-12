@@ -116,7 +116,7 @@ public class ProductionController {
         
         public ProductionRecord(ProductionReport report) {
             this.report = report;
-            this.date = report.getProductionDate();
+            this.date = report.getProductionDate() != null ? report.getProductionDate() : LocalDateTime.now();
             this.productName = report.getProduct() != null ? report.getProduct().getName() : "";
             this.quantity = report.getQuantityProduced();
             this.status = report.getStatus() != null ? report.getStatus().name() : "";
@@ -878,7 +878,9 @@ public class ProductionController {
             
             // Set default filename
             String productName = selectedReport.getProduct() != null ? selectedReport.getProduct().getName() : "Produs";
-            String date = selectedReport.getProductionDate().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+            String date = selectedReport.getProductionDate() != null 
+                ? selectedReport.getProductionDate().format(DateTimeFormatter.ofPattern("yyyyMMdd"))
+                : LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
             fileChooser.setInitialFileName("Raport_Productie_" + productName + "_" + date + ".pdf");
             
             // Set extension filter
