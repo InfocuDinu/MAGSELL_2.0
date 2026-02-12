@@ -1,371 +1,476 @@
 /* ========================================
-   BAKERY MANAGER PRO - STILURI CSS
+   BAKERY MANAGER PRO - SMARTBILL STYLE
+   Inspirat de SmartBill.ro
    ======================================== */
 
-/* ===== VARIABILE DE CULOR ===== */
+/* ===== VARIABILE DE CULOARE SMARTBILL ===== */
 :root {
-    /* Culori principale */
-    --primary-color: #2563eb;
-    --primary-hover: #1d4ed8;
-    --primary-light: #e3f2fd;
+    /* Culori principale SmartBill - Teal/Cyan */
+    --primary-color: #00BCD4;        /* Cyan vibrant SmartBill */
+    --primary-hover: #00ACC1;        /* Cyan mai întunecat */
+    --primary-dark: #0097A7;         /* Cyan închis */
+    --primary-light: #B2EBF2;        /* Cyan deschis */
+    --primary-lighter: #E0F7FA;      /* Cyan foarte deschis */
     
-    --success-color: #10b981;
-    --success-hover: #059669;
-    --success-light: #d1fae5;
+    /* Culori secundare */
+    --secondary-color: #FF6F00;      /* Portocaliu SmartBill */
+    --secondary-hover: #FF5722;      /* Portocaliu hover */
+    --secondary-light: #FFE0B2;      /* Portocaliu deschis */
     
-    --danger-color: #ef4444;
-    --danger-hover: #dc2626;
-    --danger-light: #f8d7da;
+    /* Culori accent */
+    --accent-blue: #2196F3;          /* Albastru accent */
+    --accent-green: #4CAF50;         /* Verde succes */
+    --accent-red: #F44336;           /* Roșu pericol */
+    --accent-yellow: #FFC107;        /* Galben atenție */
     
-    --warning-color: #f59e0b;
-    --warning-hover: #d97706;
-    --warning-light: #fef3c7;
+    /* Succese și erori */
+    --success-color: #4CAF50;
+    --success-hover: #45A049;
+    --success-light: #C8E6C9;
     
-    --info-color: #3b82f6;
-    --info-hover: #2563eb;
-    --info-light: #dbeafe;
+    --danger-color: #F44336;
+    --danger-hover: #E53935;
+    --danger-light: #FFCDD2;
     
-    --gray-50: #f9fafb;
-    --gray-100: #f3f4f6;
-    --gray-200: #e5e7eb;
-    --gray-300: #d1d5db;
-    --gray-400: #9ca3af;
-    --gray-500: #6b7280;
-    --gray-600: #4b5563;
-    --gray-700: #374151;
-    --gray-800: #1f2937;
-    --gray-900: #111827;
+    --warning-color: #FF9800;
+    --warning-hover: #FB8C00;
+    --warning-light: #FFE0B2;
+    
+    --info-color: #2196F3;
+    --info-hover: #1E88E5;
+    --info-light: #BBDEFB;
+    
+    /* Gri-uri SmartBill */
+    --gray-50: #FAFAFA;
+    --gray-100: #F5F5F5;
+    --gray-200: #EEEEEE;
+    --gray-300: #E0E0E0;
+    --gray-400: #BDBDBD;
+    --gray-500: #9E9E9E;
+    --gray-600: #757575;
+    --gray-700: #616161;
+    --gray-800: #424242;
+    --gray-900: #212121;
     
     /* Fundaluri */
-    --bg-primary: #ffffff;
-    --bg-secondary: #f8fafc;
-    --bg-tertiary: #f1f5f9;
+    --bg-primary: #FFFFFF;
+    --bg-secondary: #F5F5F5;
+    --bg-tertiary: #FAFAFA;
+    --bg-sidebar: #263238;           /* Sidebar întunecat SmartBill */
     
     /* Text */
-    --text-primary: #111827;
-    --text-secondary: #6b7280;
-    --text-muted: #9ca3af;
-    --text-light: #d1d5db;
+    --text-primary: #212121;
+    --text-secondary: #757575;
+    --text-muted: #9E9E9E;
+    --text-light: #BDBDBD;
+    --text-white: #FFFFFF;
     
     /* Borduri */
-    --border-color: #e5e7eb;
-    --border-light: #f3f4f6;
-    --border-dark: #d1d5db;
+    --border-color: #E0E0E0;
+    --border-light: #EEEEEE;
+    --border-dark: #BDBDBD;
     
-    /* Umbre */
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    /* Umbre SmartBill */
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.08);
+    --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.12);
+    --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.16);
+    --shadow-xl: 0 12px 24px rgba(0, 0, 0, 0.20);
     
     /* Fonturi */
-    --font-family: 'Segoe UI', 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    --font-size-xs: 0.75rem;
-    --font-size-sm: 0.875rem;
-    --font-size-base: 1rem;
-    --font-size-lg: 1.125rem;
-    --font-size-xl: 1.25rem;
-    --font-size-2xl: 1.5rem;
-    --font-size-3xl: 1.875rem;
+    --font-family: 'Segoe UI', 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-size-xs: 11px;
+    --font-size-sm: 13px;
+    --font-size-base: 14px;
+    --font-size-lg: 16px;
+    --font-size-xl: 18px;
+    --font-size-2xl: 24px;
+    --font-size-3xl: 30px;
     
     /* Spațieri */
-    --spacing-xs: 0.25rem;
-    --spacing-sm: 0.5rem;
-    --spacing-md: 1rem;
-    --spacing-lg: 1.5rem;
-    --spacing-xl: 2rem;
-    --spacing-2xl: 3rem;
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+    --spacing-xl: 32px;
+    --spacing-2xl: 48px;
     
-    /* Radius */
-    --radius-sm: 0.25rem;
-    --radius-md: 0.375rem;
-    --radius-lg: 0.5rem;
-    --radius-xl: 0.75rem;
+    /* Radius SmartBill - mai rotunjite */
+    --radius-sm: 3px;
+    --radius-md: 4px;
+    --radius-lg: 6px;
+    --radius-xl: 8px;
     --radius-full: 9999px;
 }
 
 /* ===== RESET ȘI BAZĂ ===== */
 * {
-    -fx-font-family: var(--font-family);
-    -fx-font-size: var(--font-size-base);
-    -fx-text-fill: var(--text-primary);
-    -fx-background-color: var(--bg-primary);
-    -fx-border-color: var(--border-color);
-    -fx-border-radius: var(--radius-md);
+    -fx-font-family: 'Segoe UI', 'Roboto', sans-serif;
+    -fx-font-size: 14px;
+    -fx-text-fill: #212121;
 }
 
 .root {
-    -fx-background-color: var(--bg-secondary);
+    -fx-background-color: #F5F5F5;
+    -fx-font-family: 'Segoe UI', 'Roboto', sans-serif;
 }
 
-/* ===== HEADER ===== */
+/* ===== HEADER SMARTBILL STYLE ===== */
 .header {
-    -fx-background-color: var(--primary-color);
-    -fx-padding: var(--spacing-md) var(--spacing-lg);
+    -fx-background-color: linear-gradient(to right, #00BCD4, #00ACC1);
+    -fx-padding: 16px 24px;
     -fx-border-color: transparent;
-    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.1), 0, 4, 0, 0);
+    -fx-effect: dropshadow(gaussian, rgba(0, 188, 212, 0.3), 8, 0, 0, 2);
 }
 
 .header .label {
     -fx-text-fill: white;
-    -fx-font-size: var(--font-size-lg);
+    -fx-font-size: 16px;
     -fx-font-weight: bold;
 }
 
 .header-title {
-    -fx-font-size: var(--font-size-2xl);
+    -fx-font-size: 24px;
     -fx-font-weight: bold;
     -fx-text-fill: white;
 }
 
 .header-subtitle {
-    -fx-font-size: var(--font-size-base);
+    -fx-font-size: 14px;
     -fx-text-fill: rgba(255, 255, 255, 0.9);
 }
 
-/* ===== SIDEBAR ===== */
+/* ===== SIDEBAR SMARTBILL ===== */
 .sidebar {
-    -fx-background-color: var(--gray-800);
-    -fx-padding: var(--spacing-md);
-    -fx-spacing: var(--spacing-sm);
+    -fx-background-color: #263238;
+    -fx-padding: 16px;
+    -fx-spacing: 8px;
 }
 
 .sidebar-button {
     -fx-background-color: transparent;
-    -fx-text-fill: var(--gray-300);
+    -fx-text-fill: rgba(255, 255, 255, 0.7);
     -fx-border-color: transparent;
-    -fx-border-radius: var(--radius-md);
-    -fx-padding: var(--spacing-sm) var(--spacing-md);
+    -fx-border-radius: 4px;
+    -fx-padding: 8px 16px;
     -fx-cursor: hand;
+    -fx-font-size: 14px;
 }
 
 .sidebar-button:hover {
-    -fx-background-color: var(--gray-700);
+    -fx-background-color: rgba(255, 255, 255, 0.1);
     -fx-text-fill: white;
 }
 
 .sidebar-button:selected {
-    -fx-background-color: var(--primary-color);
+    -fx-background-color: #00BCD4;
     -fx-text-fill: white;
 }
 
 .sidebar-label {
-    -fx-text-fill: var(--gray-400);
-    -fx-font-size: var(--font-size-xs);
+    -fx-text-fill: rgba(255, 255, 255, 0.5);
+    -fx-font-size: 11px;
     -fx-font-weight: 600;
+    -fx-text-transform: uppercase;
 }
 
-/* ===== CARDURI ȘI PANOURI ===== */
+/* ===== CARDURI ȘI PANOURI SMARTBILL ===== */
 .card {
     -fx-background-color: white;
-    -fx-border-color: var(--border-color);
-    -fx-border-radius: var(--radius-lg);
+    -fx-border-color: #E0E0E0;
+    -fx-border-radius: 4px;
     -fx-border-width: 1px;
-    -fx-effect: var(--shadow-sm);
-    -fx-padding: var(--spacing-lg);
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.08), 4, 0, 0, 2);
+    -fx-padding: 24px;
 }
 
 .form-pane {
     -fx-background-color: white;
-    -fx-border-color: var(--border-light);
-    -fx-border-radius: var(--radius-lg);
+    -fx-border-color: #EEEEEE;
+    -fx-border-radius: 6px;
     -fx-border-width: 1px;
-    -fx-padding: var(--spacing-xl);
-    -fx-spacing: var(--spacing-md);
-    -fx-hgap: var(--spacing-md);
-    -fx-vgap: var(--spacing-md);
+    -fx-padding: 32px;
+    -fx-spacing: 16px;
+    -fx-hgap: 16px;
+    -fx-vgap: 16px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.06), 4, 0, 0, 1);
 }
 
 .form-pane .label {
-    -fx-font-size: var(--font-size-sm);
+    -fx-font-size: 13px;
     -fx-font-weight: 600;
-    -fx-text-fill: var(--text-secondary);
+    -fx-text-fill: #757575;
 }
 
 .form-pane .text-field {
-    -fx-background-color: var(--bg-primary);
-    -fx-border-color: var(--border-color);
-    -fx-border-radius: var(--radius-md);
-    -fx-padding: var(--spacing-sm) var(--spacing-md);
-    -fx-font-size: var(--font-size-base);
+    -fx-background-color: white;
+    -fx-border-color: #E0E0E0;
+    -fx-border-radius: 4px;
+    -fx-padding: 10px 12px;
+    -fx-font-size: 14px;
 }
 
 .form-pane .text-field:focused {
-    -fx-border-color: var(--primary-color);
-    -fx-effect: dropshadow(gaussian, rgba(37, 99, 235, 0.2), 0, 0, 0, 0);
+    -fx-border-color: #00BCD4;
+    -fx-border-width: 2px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 188, 212, 0.2), 4, 0, 0, 0);
 }
 
-/* ===== BUTOANE ===== */
+/* ===== BUTOANE SMARTBILL ===== */
 .button {
-    -fx-background-color: var(--gray-100);
-    -fx-text-fill: var(--text-primary);
-    -fx-border-color: var(--border-color);
-    -fx-border-radius: var(--radius-md);
+    -fx-background-color: white;
+    -fx-text-fill: #757575;
+    -fx-border-color: #E0E0E0;
+    -fx-border-radius: 4px;
     -fx-border-width: 1px;
-    -fx-padding: var(--spacing-sm) var(--spacing-md);
-    -fx-font-size: var(--font-size-base);
+    -fx-padding: 10px 20px;
+    -fx-font-size: 14px;
     -fx-font-weight: 500;
     -fx-cursor: hand;
     -fx-background-insets: 0;
-    -fx-background-radius: var(--radius-md);
+    -fx-background-radius: 4px;
     -fx-border-insets: 0;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.05), 2, 0, 0, 1);
 }
 
 .button:hover {
-    -fx-background-color: var(--gray-200);
-    -fx-border-color: var(--border-dark);
-    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.1), 0, 2, 0, 0);
+    -fx-background-color: #FAFAFA;
+    -fx-border-color: #BDBDBD;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.12), 4, 0, 0, 2);
+    -fx-translate-y: -1px;
 }
 
 .button:pressed {
-    -fx-background-color: var(--gray-300);
-    -fx-border-color: var(--border-dark);
+    -fx-background-color: #F5F5F5;
+    -fx-border-color: #9E9E9E;
+    -fx-translate-y: 0px;
 }
 
-.button.primary {
-    -fx-background-color: var(--primary-color);
+/* Buton Principal - Cyan SmartBill */
+.button.primary,
+.button-primary {
+    -fx-background-color: linear-gradient(to bottom, #00BCD4, #00ACC1);
     -fx-text-fill: white;
-    -fx-border-color: var(--primary-color);
+    -fx-border-color: #00ACC1;
+    -fx-font-weight: 600;
+    -fx-effect: dropshadow(gaussian, rgba(0, 188, 212, 0.3), 4, 0, 0, 2);
 }
 
-.button.primary:hover {
-    -fx-background-color: var(--primary-hover);
-    -fx-border-color: var(--primary-hover);
+.button.primary:hover,
+.button-primary:hover {
+    -fx-background-color: linear-gradient(to bottom, #00ACC1, #0097A7);
+    -fx-border-color: #0097A7;
+    -fx-effect: dropshadow(gaussian, rgba(0, 188, 212, 0.4), 6, 0, 0, 3);
+    -fx-scale-y: 1.02;
 }
 
-.button.success {
-    -fx-background-color: var(--success-color);
+.button.primary:pressed,
+.button-primary:pressed {
+    -fx-background-color: #0097A7;
+    -fx-scale-y: 0.98;
+}
+
+/* Buton Success - Verde */
+.button.success,
+.button-success {
+    -fx-background-color: linear-gradient(to bottom, #4CAF50, #45A049);
     -fx-text-fill: white;
-    -fx-border-color: var(--success-color);
+    -fx-border-color: #45A049;
+    -fx-font-weight: 600;
+    -fx-effect: dropshadow(gaussian, rgba(76, 175, 80, 0.3), 4, 0, 0, 2);
 }
 
-.button.success:hover {
-    -fx-background-color: var(--success-hover);
-    -fx-border-color: var(--success-hover);
+.button.success:hover,
+.button-success:hover {
+    -fx-background-color: linear-gradient(to bottom, #45A049, #3D8B40);
+    -fx-border-color: #3D8B40;
+    -fx-effect: dropshadow(gaussian, rgba(76, 175, 80, 0.4), 6, 0, 0, 3);
 }
 
-.button.danger {
-    -fx-background-color: var(--danger-color);
+.button.success:pressed,
+.button-success:pressed {
+    -fx-background-color: #3D8B40;
+}
+
+/* Buton Danger - Roșu */
+.button.danger,
+.button-danger {
+    -fx-background-color: linear-gradient(to bottom, #F44336, #E53935);
     -fx-text-fill: white;
-    -fx-border-color: var(--danger-color);
+    -fx-border-color: #E53935;
+    -fx-font-weight: 600;
+    -fx-effect: dropshadow(gaussian, rgba(244, 67, 54, 0.3), 4, 0, 0, 2);
 }
 
-.button.danger:hover {
-    -fx-background-color: var(--danger-hover);
-    -fx-border-color: var(--danger-hover);
+.button.danger:hover,
+.button-danger:hover {
+    -fx-background-color: linear-gradient(to bottom, #E53935, #D32F2F);
+    -fx-border-color: #D32F2F;
+    -fx-effect: dropshadow(gaussian, rgba(244, 67, 54, 0.4), 6, 0, 0, 3);
 }
 
-.button.warning {
-    -fx-background-color: var(--warning-color);
+.button.danger:pressed,
+.button-danger:pressed {
+    -fx-background-color: #D32F2F;
+}
+
+/* Buton Warning - Portocaliu SmartBill */
+.button.warning,
+.button-warning {
+    -fx-background-color: linear-gradient(to bottom, #FF9800, #FB8C00);
     -fx-text-fill: white;
-    -fx-border-color: var(--warning-color);
+    -fx-border-color: #FB8C00;
+    -fx-font-weight: 600;
+    -fx-effect: dropshadow(gaussian, rgba(255, 152, 0, 0.3), 4, 0, 0, 2);
 }
 
-.button.warning:hover {
-    -fx-background-color: var(--warning-hover);
-    -fx-border-color: var(--warning-hover);
+.button.warning:hover,
+.button-warning:hover {
+    -fx-background-color: linear-gradient(to bottom, #FB8C00, #F57C00);
+    -fx-border-color: #F57C00;
+    -fx-effect: dropshadow(gaussian, rgba(255, 152, 0, 0.4), 6, 0, 0, 3);
 }
 
-.button.info {
-    -fx-background-color: var(--info-color);
+.button.warning:pressed,
+.button-warning:pressed {
+    -fx-background-color: #F57C00;
+}
+
+/* Buton Info - Albastru */
+.button.info,
+.button-info {
+    -fx-background-color: linear-gradient(to bottom, #2196F3, #1E88E5);
     -fx-text-fill: white;
-    -fx-border-color: var(--info-color);
+    -fx-border-color: #1E88E5;
+    -fx-font-weight: 600;
+    -fx-effect: dropshadow(gaussian, rgba(33, 150, 243, 0.3), 4, 0, 0, 2);
 }
 
-.button.info:hover {
-    -fx-background-color: var(--info-hover);
-    -fx-border-color: var(--info-hover);
+.button.info:hover,
+.button-info:hover {
+    -fx-background-color: linear-gradient(to bottom, #1E88E5, #1976D2);
+    -fx-border-color: #1976D2;
+    -fx-effect: dropshadow(gaussian, rgba(33, 150, 243, 0.4), 6, 0, 0, 3);
 }
 
+.button.info:pressed,
+.button-info:pressed {
+    -fx-background-color: #1976D2;
+}
+
+/* Buton Dezactivat */
 .button:disabled {
-    -fx-background-color: var(--gray-100);
-    -fx-text-fill: var(--text-muted);
-    -fx-border-color: var(--border-light);
-    -fx-opacity: 0.6;
+    -fx-background-color: #F5F5F5;
+    -fx-text-fill: #BDBDBD;
+    -fx-border-color: #EEEEEE;
+    -fx-opacity: 0.7;
     -fx-cursor: default;
 }
 
 .button .icon {
-    -fx-font-size: var(--font-size-lg);
+    -fx-font-size: 16px;
 }
 
-/* ===== LABELS ===== */
+/* ===== LABELS SMARTBILL ===== */
 .label {
-    -fx-font-size: var(--font-size-base);
-    -fx-text-fill: var(--text-primary);
+    -fx-font-size: 14px;
+    -fx-text-fill: #212121;
 }
 
 .label-title {
-    -fx-font-size: var(--font-size-xl);
+    -fx-font-size: 18px;
     -fx-font-weight: bold;
-    -fx-text-fill: var(--text-primary);
+    -fx-text-fill: #212121;
     -fx-wrap-text: true;
 }
 
 .label-subtitle {
-    -fx-font-size: var(--font-size-lg);
+    -fx-font-size: 16px;
     -fx-font-weight: 600;
-    -fx-text-fill: var(--text-secondary);
+    -fx-text-fill: #757575;
 }
 
 .label-muted {
-    -fx-font-size: var(--font-size-sm);
-    -fx-text-fill: var(--text-muted);
+    -fx-font-size: 13px;
+    -fx-text-fill: #9E9E9E;
 }
 
 .label-success {
-    -fx-text-fill: var(--success-color);
+    -fx-text-fill: #4CAF50;
     -fx-font-weight: 600;
 }
 
 .label-danger {
-    -fx-text-fill: var(--danger-color);
+    -fx-text-fill: #F44336;
     -fx-font-weight: 600;
 }
 
 .label-warning {
-    -fx-text-fill: var(--warning-color);
+    -fx-text-fill: #FF9800;
     -fx-font-weight: 600;
 }
 
 .label-info {
-    -fx-text-fill: var(--info-color);
+    -fx-text-fill: #2196F3;
     -fx-font-weight: 600;
 }
 
-/* ===== TABELE (TableView) ===== */
+/* ===== TABELE SMARTBILL ===== */
 .table-view {
     -fx-background-color: white;
-    -fx-border-color: var(--border-color);
-    -fx-border-radius: var(--radius-lg);
+    -fx-border-color: #E0E0E0;
+    -fx-border-radius: 4px;
     -fx-border-width: 1px;
-    -fx-effect: var(--shadow-sm);
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.08), 4, 0, 0, 2);
 }
 
+/* Header tabel - Cyan gradient SmartBill */
 .table-view .column-header {
-    -fx-background-color: var(--gray-50);
-    -fx-text-fill: var(--text-primary);
-    -fx-font-size: var(--font-size-sm);
+    -fx-background-color: linear-gradient(to bottom, #00BCD4, #00ACC1);
+    -fx-text-fill: white;
+    -fx-font-size: 13px;
     -fx-font-weight: 600;
-    -fx-border-color: var(--border-light);
-    -fx-border-width: 0px 0px 1px 0px;
-    -fx-padding: var(--spacing-sm) var(--spacing-md);
+    -fx-border-color: #00ACC1;
+    -fx-border-width: 0px 0px 2px 0px;
+    -fx-padding: 12px 16px;
 }
 
 .table-view .column-header .label {
-    -fx-text-fill: var(--text-primary);
+    -fx-text-fill: white;
     -fx-font-weight: 600;
 }
 
-.table-view .table-row-cell {
-    -fx-border-color: var(--border-light);
-    -fx-border-width: 0px 0px 1px 0px;
-    -fx-padding: var(--spacing-sm) var(--spacing-md);
+.table-view .column-header-background {
+    -fx-background-color: linear-gradient(to bottom, #00BCD4, #00ACC1);
 }
 
+.table-view .filler {
+    -fx-background-color: linear-gradient(to bottom, #00BCD4, #00ACC1);
+}
+
+.table-view .table-row-cell {
+    -fx-background-color: white;
+    -fx-border-color: #EEEEEE;
+    -fx-border-width: 0px 0px 1px 0px;
+    -fx-padding: 10px 16px;
+    -fx-cell-size: 40px;
+}
+
+/* Alternare culori rânduri */
+.table-view .table-row-cell:odd {
+    -fx-background-color: #FAFAFA;
+}
+
+/* Hover pe rând */
+.table-view .table-row-cell:hover {
+    -fx-background-color: #E0F7FA;
+    -fx-cursor: hand;
+}
+
+/* Rând selectat */
 .table-view .table-row-cell:selected {
-    -fx-background-color: var(--primary-light);
-    -fx-text-fill: var(--primary-color);
-    -fx-border-color: var(--primary-color);
+    -fx-background-color: #B2EBF2;
+    -fx-text-fill: #212121;
+    -fx-border-color: #00BCD4;
 }
 
 .table-view .table-row-cell:hover {
