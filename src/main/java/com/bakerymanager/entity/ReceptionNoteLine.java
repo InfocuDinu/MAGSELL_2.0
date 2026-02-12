@@ -55,6 +55,16 @@ public class ReceptionNoteLine {
     @Column(name = "total_value", precision = 10, scale = 2)
     private BigDecimal totalValue; // Valoare totală
     
+    // Retail Pricing (for markup/adaos and sale price)
+    @Column(name = "markup_percentage", precision = 5, scale = 2)
+    private BigDecimal markupPercentage = BigDecimal.ZERO; // Adaos comercial (%)
+    
+    @Column(name = "sale_price", precision = 10, scale = 2)
+    private BigDecimal salePrice = BigDecimal.ZERO; // Preț de vânzare
+    
+    @Column(name = "profit_margin", precision = 5, scale = 2)
+    private BigDecimal profitMargin = BigDecimal.ZERO; // Marjă profit (%)
+    
     // Discrepancy
     @Column(name = "has_discrepancy")
     private Boolean hasDiscrepancy = false;
@@ -93,6 +103,25 @@ public class ReceptionNoteLine {
         if (invoicedQuantity != null && receivedQuantity != null) {
             quantityDifference = receivedQuantity.subtract(invoicedQuantity);
             hasDiscrepancy = quantityDifference.compareTo(BigDecimal.ZERO) != 0;
+        }
+    }
+    
+    public void calculateSalePrice() {
+        if (unitPrice != null && markupPercentage != null) {
+            // Sale price = unit price + (unit price * markup percentage / 100)
+            BigDecimal markup = unitPrice.multiply(markupPercentage.divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP));
+            salePrice = unitPrice.add(markup).setScale(2, RoundingMode.HALF_UP);
+            calculateProfitMargin();
+        }
+    }
+    
+    public void calculateProfitMargin() {
+        if (unitPrice != null && salePrice != null && unitPrice.compareTo(BigDecimal.ZERO) > 0) {
+            // Profit margin = ((sale price - unit price) / unit price) * 100
+            BigDecimal profit = salePrice.subtract(unitPrice);
+            profitMargin = profit.divide(unitPrice, 4, RoundingMode.HALF_UP)
+                .multiply(BigDecimal.valueOf(100))
+                .setScale(2, RoundingMode.HALF_UP);
         }
     }
     
@@ -221,5 +250,31 @@ public class ReceptionNoteLine {
     
     public void setDiscrepancyNotes(String discrepancyNotes) {
         this.discrepancyNotes = discrepancyNotes;
+    }
+    
+    public BigDecimal getMarkupPercentage() {
+        return markupPercentage;
+    }
+    
+    public void setMarkupPercentage(BigDecimal markupPercentage) {
+        this.markupPercentage = markupPercentage;
+        calculateSalePrice();
+    }
+    
+    public BigDecimal getSalePrice() {
+        return salePrice;
+    }
+    
+    public void setSalePrice(BigDecimal salePrice) {
+        this.salePrice = salePrice;
+        calculateProfitMargin();
+    }
+    
+    public BigDecimal getProfitMargin() {
+        return profitMargin;
+    }
+    
+    public void setProfitMargin(BigDecimal profitMargin) {
+        this.profitMargin = profitMargin;
     }
 }

@@ -4,6 +4,7 @@ import com.bakerymanager.dto.UBLInvoiceDto;
 import com.bakerymanager.entity.Invoice;
 import com.bakerymanager.entity.Ingredient;
 import com.bakerymanager.entity.ReceptionNote;
+import com.bakerymanager.entity.ReceptionNoteLine;
 import com.bakerymanager.service.InvoiceService;
 import com.bakerymanager.service.IngredientService;
 import com.bakerymanager.service.ReceptionNoteService;
@@ -803,19 +804,33 @@ public class InvoicesController {
     
     private void editReceptionNote(ReceptionNote nir) {
         try {
+            // Main dialog
             javafx.scene.control.Dialog<javafx.scene.control.ButtonType> dialog = new javafx.scene.control.Dialog<>();
-            dialog.setTitle("Editare NIR");
-            dialog.setHeaderText("NIR: " + nir.getNirNumber());
+            dialog.setTitle("Editare NIR - " + nir.getNirNumber());
+            dialog.setHeaderText("Editare Notă de Intrare Recepție");
             
-            // Create editable form
-            javafx.scene.layout.GridPane grid = new javafx.scene.layout.GridPane();
-            grid.setHgap(10);
-            grid.setVgap(10);
-            grid.setPadding(new javafx.geometry.Insets(20, 150, 10, 10));
+            // Create TabPane for organized sections
+            javafx.scene.control.TabPane tabPane = new javafx.scene.control.TabPane();
+            tabPane.setTabClosingPolicy(javafx.scene.control.TabPane.TabClosingPolicy.UNAVAILABLE);
+            
+            // ============ TAB 1: NIR Header Information ============
+            javafx.scene.control.Tab headerTab = new javafx.scene.control.Tab("Date NIR");
+            javafx.scene.layout.GridPane headerGrid = new javafx.scene.layout.GridPane();
+            headerGrid.setHgap(10);
+            headerGrid.setVgap(10);
+            headerGrid.setPadding(new javafx.geometry.Insets(20, 20, 20, 20));
             
             // NIR Number (read-only)
             javafx.scene.control.TextField nirNumberField = new javafx.scene.control.TextField(nir.getNirNumber());
             nirNumberField.setEditable(false);
+            nirNumberField.setStyle("-fx-background-color: #f5f5f5;");
+            
+            // Invoice Number (read-only, from linked invoice)
+            javafx.scene.control.TextField invoiceField = new javafx.scene.control.TextField(
+                nir.getInvoice() != null ? nir.getInvoice().getInvoiceNumber() : ""
+            );
+            invoiceField.setEditable(false);
+            invoiceField.setStyle("-fx-background-color: #f5f5f5;");
             
             // NIR Date
             javafx.scene.control.DatePicker nirDatePicker = new javafx.scene.control.DatePicker(
@@ -869,45 +884,239 @@ public class InvoicesController {
             );
             discrepanciesArea.setPrefRowCount(3);
             
-            // Add all fields to grid
+            // Add header fields to grid
             int row = 0;
-            grid.add(new javafx.scene.control.Label("Număr NIR:"), 0, row);
-            grid.add(nirNumberField, 1, row++);
+            headerGrid.add(new javafx.scene.control.Label("Număr NIR:"), 0, row);
+            headerGrid.add(nirNumberField, 1, row++);
             
-            grid.add(new javafx.scene.control.Label("Data NIR:"), 0, row);
-            grid.add(nirDatePicker, 1, row++);
+            headerGrid.add(new javafx.scene.control.Label("Factură:"), 0, row);
+            headerGrid.add(invoiceField, 1, row++);
             
-            grid.add(new javafx.scene.control.Label("Status:"), 0, row);
-            grid.add(statusCombo, 1, row++);
+            headerGrid.add(new javafx.scene.control.Label("Data NIR:"), 0, row);
+            headerGrid.add(nirDatePicker, 1, row++);
             
-            grid.add(new javafx.scene.control.Label("Companie:"), 0, row);
-            grid.add(companyNameField, 1, row++);
+            headerGrid.add(new javafx.scene.control.Label("Status:"), 0, row);
+            headerGrid.add(statusCombo, 1, row++);
             
-            grid.add(new javafx.scene.control.Label("Adresă Companie:"), 0, row);
-            grid.add(companyAddressField, 1, row++);
+            headerGrid.add(new javafx.scene.control.Label("Companie:"), 0, row);
+            headerGrid.add(companyNameField, 1, row++);
             
-            grid.add(new javafx.scene.control.Label("Aviz Însoțire:"), 0, row);
-            grid.add(deliveryNoteField, 1, row++);
+            headerGrid.add(new javafx.scene.control.Label("Adresă Companie:"), 0, row);
+            headerGrid.add(companyAddressField, 1, row++);
             
-            grid.add(new javafx.scene.control.Label("Data Recepție:"), 0, row);
-            grid.add(receptionDatePicker, 1, row++);
+            headerGrid.add(new javafx.scene.control.Label("Aviz Însoțire:"), 0, row);
+            headerGrid.add(deliveryNoteField, 1, row++);
             
-            grid.add(new javafx.scene.control.Label("Membru Comisie 1:"), 0, row);
-            grid.add(committee1Field, 1, row++);
+            headerGrid.add(new javafx.scene.control.Label("Data Recepție:"), 0, row);
+            headerGrid.add(receptionDatePicker, 1, row++);
             
-            grid.add(new javafx.scene.control.Label("Membru Comisie 2:"), 0, row);
-            grid.add(committee2Field, 1, row++);
+            headerGrid.add(new javafx.scene.control.Label("Membru Comisie 1:"), 0, row);
+            headerGrid.add(committee1Field, 1, row++);
             
-            grid.add(new javafx.scene.control.Label("Membru Comisie 3:"), 0, row);
-            grid.add(committee3Field, 1, row++);
+            headerGrid.add(new javafx.scene.control.Label("Membru Comisie 2:"), 0, row);
+            headerGrid.add(committee2Field, 1, row++);
             
-            grid.add(new javafx.scene.control.Label("Gestionar:"), 0, row);
-            grid.add(warehouseManagerField, 1, row++);
+            headerGrid.add(new javafx.scene.control.Label("Membru Comisie 3:"), 0, row);
+            headerGrid.add(committee3Field, 1, row++);
             
-            grid.add(new javafx.scene.control.Label("Observații/Diferențe:"), 0, row);
-            grid.add(discrepanciesArea, 1, row++);
+            headerGrid.add(new javafx.scene.control.Label("Gestionar:"), 0, row);
+            headerGrid.add(warehouseManagerField, 1, row++);
             
-            dialog.getDialogPane().setContent(grid);
+            headerGrid.add(new javafx.scene.control.Label("Observații/Diferențe:"), 0, row);
+            headerGrid.add(discrepanciesArea, 1, row++);
+            
+            headerTab.setContent(new javafx.scene.control.ScrollPane(headerGrid));
+            
+            // ============ TAB 2: Product Lines ============
+            javafx.scene.control.Tab linesTab = new javafx.scene.control.Tab("Produse");
+            javafx.scene.layout.VBox linesBox = new javafx.scene.layout.VBox(10);
+            linesBox.setPadding(new javafx.geometry.Insets(15));
+            
+            // Product lines table
+            javafx.scene.control.TableView<ReceptionNoteLine> linesTable = new javafx.scene.control.TableView<>();
+            javafx.collections.ObservableList<ReceptionNoteLine> lines = javafx.collections.FXCollections.observableArrayList(nir.getLines());
+            linesTable.setItems(lines);
+            linesTable.setEditable(true);
+            linesTable.setPrefHeight(400);
+            
+            // Columns
+            javafx.scene.control.TableColumn<ReceptionNoteLine, String> productCol = new javafx.scene.control.TableColumn<>("Produs");
+            productCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("productName"));
+            productCol.setPrefWidth(150);
+            
+            javafx.scene.control.TableColumn<ReceptionNoteLine, String> codeCol = new javafx.scene.control.TableColumn<>("Cod");
+            codeCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("productCode"));
+            codeCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn());
+            codeCol.setOnEditCommit(event -> event.getRowValue().setProductCode(event.getNewValue()));
+            codeCol.setPrefWidth(80);
+            
+            javafx.scene.control.TableColumn<ReceptionNoteLine, String> unitCol = new javafx.scene.control.TableColumn<>("UM");
+            unitCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("unit"));
+            unitCol.setPrefWidth(60);
+            
+            javafx.scene.control.TableColumn<ReceptionNoteLine, BigDecimal> invoicedQtyCol = new javafx.scene.control.TableColumn<>("Cant. Fact.");
+            invoicedQtyCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("invoicedQuantity"));
+            invoicedQtyCol.setCellFactory(col -> new javafx.scene.control.TableCell<>() {
+                @Override
+                protected void updateItem(BigDecimal item, boolean empty) {
+                    super.updateItem(item, empty);
+                    setText(empty || item == null ? "" : item.setScale(2, java.math.RoundingMode.HALF_UP).toString());
+                }
+            });
+            invoicedQtyCol.setPrefWidth(80);
+            
+            javafx.scene.control.TableColumn<ReceptionNoteLine, BigDecimal> receivedQtyCol = new javafx.scene.control.TableColumn<>("Cant. Recep.");
+            receivedQtyCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("receivedQuantity"));
+            receivedQtyCol.setCellFactory(col -> new javafx.scene.control.cell.TextFieldTableCell<>(new javafx.util.converter.BigDecimalStringConverter()));
+            receivedQtyCol.setOnEditCommit(event -> {
+                event.getRowValue().setReceivedQuantity(event.getNewValue());
+                linesTable.refresh();
+            });
+            receivedQtyCol.setPrefWidth(90);
+            
+            javafx.scene.control.TableColumn<ReceptionNoteLine, BigDecimal> diffCol = new javafx.scene.control.TableColumn<>("Difer.");
+            diffCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("quantityDifference"));
+            diffCol.setCellFactory(col -> new javafx.scene.control.TableCell<>() {
+                @Override
+                protected void updateItem(BigDecimal item, boolean empty) {
+                    super.updateItem(item, empty);
+                    if (empty || item == null) {
+                        setText("");
+                        setStyle("");
+                    } else {
+                        setText(item.setScale(2, java.math.RoundingMode.HALF_UP).toString());
+                        if (item.compareTo(BigDecimal.ZERO) != 0) {
+                            setStyle("-fx-background-color: #ffeb3b;"); // Yellow for discrepancy
+                        } else {
+                            setStyle("");
+                        }
+                    }
+                }
+            });
+            diffCol.setPrefWidth(70);
+            
+            javafx.scene.control.TableColumn<ReceptionNoteLine, BigDecimal> unitPriceCol = new javafx.scene.control.TableColumn<>("Preț Unit.");
+            unitPriceCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("unitPrice"));
+            unitPriceCol.setCellFactory(col -> new javafx.scene.control.cell.TextFieldTableCell<>(new javafx.util.converter.BigDecimalStringConverter()));
+            unitPriceCol.setOnEditCommit(event -> {
+                event.getRowValue().setUnitPrice(event.getNewValue());
+                linesTable.refresh();
+            });
+            unitPriceCol.setPrefWidth(80);
+            
+            javafx.scene.control.TableColumn<ReceptionNoteLine, BigDecimal> vatRateCol = new javafx.scene.control.TableColumn<>("TVA %");
+            vatRateCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("vatRate"));
+            vatRateCol.setCellFactory(col -> new javafx.scene.control.cell.TextFieldTableCell<>(new javafx.util.converter.BigDecimalStringConverter()));
+            vatRateCol.setOnEditCommit(event -> {
+                event.getRowValue().setVatRate(event.getNewValue());
+                linesTable.refresh();
+            });
+            vatRateCol.setPrefWidth(70);
+            
+            javafx.scene.control.TableColumn<ReceptionNoteLine, BigDecimal> valueNoVatCol = new javafx.scene.control.TableColumn<>("Val. fără TVA");
+            valueNoVatCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("valueWithoutVAT"));
+            valueNoVatCol.setCellFactory(col -> new javafx.scene.control.TableCell<>() {
+                @Override
+                protected void updateItem(BigDecimal item, boolean empty) {
+                    super.updateItem(item, empty);
+                    setText(empty || item == null ? "" : item.setScale(2, java.math.RoundingMode.HALF_UP).toString());
+                }
+            });
+            valueNoVatCol.setPrefWidth(90);
+            
+            javafx.scene.control.TableColumn<ReceptionNoteLine, BigDecimal> vatAmountCol = new javafx.scene.control.TableColumn<>("TVA");
+            vatAmountCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("vatAmount"));
+            vatAmountCol.setCellFactory(col -> new javafx.scene.control.TableCell<>() {
+                @Override
+                protected void updateItem(BigDecimal item, boolean empty) {
+                    super.updateItem(item, empty);
+                    setText(empty || item == null ? "" : item.setScale(2, java.math.RoundingMode.HALF_UP).toString());
+                }
+            });
+            vatAmountCol.setPrefWidth(70);
+            
+            javafx.scene.control.TableColumn<ReceptionNoteLine, BigDecimal> totalCol = new javafx.scene.control.TableColumn<>("Total");
+            totalCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("totalValue"));
+            totalCol.setCellFactory(col -> new javafx.scene.control.TableCell<>() {
+                @Override
+                protected void updateItem(BigDecimal item, boolean empty) {
+                    super.updateItem(item, empty);
+                    setText(empty || item == null ? "" : item.setScale(2, java.math.RoundingMode.HALF_UP).toString());
+                }
+            });
+            totalCol.setPrefWidth(90);
+            
+            javafx.scene.control.TableColumn<ReceptionNoteLine, BigDecimal> markupCol = new javafx.scene.control.TableColumn<>("Adaos %");
+            markupCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("markupPercentage"));
+            markupCol.setCellFactory(col -> new javafx.scene.control.cell.TextFieldTableCell<>(new javafx.util.converter.BigDecimalStringConverter()));
+            markupCol.setOnEditCommit(event -> {
+                event.getRowValue().setMarkupPercentage(event.getNewValue());
+                linesTable.refresh();
+            });
+            markupCol.setPrefWidth(80);
+            
+            javafx.scene.control.TableColumn<ReceptionNoteLine, BigDecimal> salePriceCol = new javafx.scene.control.TableColumn<>("Preț Vânz.");
+            salePriceCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("salePrice"));
+            salePriceCol.setCellFactory(col -> new javafx.scene.control.cell.TextFieldTableCell<>(new javafx.util.converter.BigDecimalStringConverter()));
+            salePriceCol.setOnEditCommit(event -> {
+                event.getRowValue().setSalePrice(event.getNewValue());
+                linesTable.refresh();
+            });
+            salePriceCol.setPrefWidth(90);
+            
+            javafx.scene.control.TableColumn<ReceptionNoteLine, String> notesCol = new javafx.scene.control.TableColumn<>("Observații");
+            notesCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("discrepancyNotes"));
+            notesCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn());
+            notesCol.setOnEditCommit(event -> event.getRowValue().setDiscrepancyNotes(event.getNewValue()));
+            notesCol.setPrefWidth(120);
+            
+            linesTable.getColumns().addAll(productCol, codeCol, unitCol, invoicedQtyCol, receivedQtyCol, 
+                                          diffCol, unitPriceCol, vatRateCol, valueNoVatCol, vatAmountCol, 
+                                          totalCol, markupCol, salePriceCol, notesCol);
+            
+            // Totals labels
+            javafx.scene.control.Label totalValueLabel = new javafx.scene.control.Label();
+            javafx.scene.control.Label totalVatLabel = new javafx.scene.control.Label();
+            javafx.scene.control.Label grandTotalLabel = new javafx.scene.control.Label();
+            
+            // Update totals function
+            Runnable updateTotals = () -> {
+                BigDecimal totalNoVat = BigDecimal.ZERO;
+                BigDecimal totalVat = BigDecimal.ZERO;
+                for (ReceptionNoteLine line : lines) {
+                    if (line.getValueWithoutVAT() != null) totalNoVat = totalNoVat.add(line.getValueWithoutVAT());
+                    if (line.getVatAmount() != null) totalVat = totalVat.add(line.getVatAmount());
+                }
+                BigDecimal grandTotal = totalNoVat.add(totalVat);
+                
+                totalValueLabel.setText("Total fără TVA: " + totalNoVat.setScale(2, java.math.RoundingMode.HALF_UP) + " RON");
+                totalVatLabel.setText("TVA: " + totalVat.setScale(2, java.math.RoundingMode.HALF_UP) + " RON");
+                grandTotalLabel.setText("TOTAL: " + grandTotal.setScale(2, java.math.RoundingMode.HALF_UP) + " RON");
+                grandTotalLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
+            };
+            
+            // Initial totals
+            updateTotals.run();
+            
+            // Update totals on table change
+            lines.addListener((javafx.collections.ListChangeListener<ReceptionNoteLine>) c -> updateTotals.run());
+            
+            javafx.scene.layout.HBox totalsBox = new javafx.scene.layout.HBox(20, totalValueLabel, totalVatLabel, grandTotalLabel);
+            totalsBox.setPadding(new javafx.geometry.Insets(10));
+            totalsBox.setStyle("-fx-background-color: #e0f7fa; -fx-border-color: #00bcd4; -fx-border-width: 2;");
+            
+            linesBox.getChildren().addAll(
+                new javafx.scene.control.Label("Produse din NIR (editabil - faceți dublu-click pe celulă):"),
+                linesTable,
+                totalsBox
+            );
+            linesTab.setContent(linesBox);
+            
+            // Add tabs
+            tabPane.getTabs().addAll(headerTab, linesTab);
+            
+            dialog.getDialogPane().setContent(tabPane);
+            dialog.getDialogPane().setPrefSize(1200, 700);
             
             // Add buttons
             dialog.getDialogPane().getButtonTypes().addAll(
@@ -915,11 +1124,14 @@ public class InvoicesController {
                 javafx.scene.control.ButtonType.CANCEL
             );
             
+            // Apply SmartBill CSS style
+            dialog.getDialogPane().getStylesheets().add(getClass().getResource("/css/style.css").toExternalForm());
+            
             // Process result
             dialog.showAndWait().ifPresent(response -> {
                 if (response == javafx.scene.control.ButtonType.OK) {
                     try {
-                        // Update NIR object
+                        // Update NIR header
                         nir.setNirDate(nirDatePicker.getValue().atStartOfDay());
                         nir.setStatus(statusCombo.getValue());
                         nir.setCompanyName(companyNameField.getText());
@@ -932,6 +1144,18 @@ public class InvoicesController {
                         nir.setWarehouseManagerName(warehouseManagerField.getText());
                         nir.setDiscrepanciesNotes(discrepanciesArea.getText());
                         
+                        // Lines are already updated via table editing
+                        // Recalculate all line values
+                        for (ReceptionNoteLine line : lines) {
+                            line.calculateValues();
+                            line.calculateDifference();
+                            line.calculateSalePrice();
+                        }
+                        
+                        // Update totals
+                        nir.calculateTotals();
+                        nir.checkDiscrepancies();
+                        
                         // Save to database
                         receptionNoteService.saveReceptionNote(nir);
                         
@@ -939,7 +1163,7 @@ public class InvoicesController {
                         loadReceptionNotes();
                         
                         showSuccessMessage("NIR actualizat cu succes!");
-                        logger.info("NIR updated: {}", nir.getNirNumber());
+                        logger.info("NIR updated: {} with {} lines", nir.getNirNumber(), lines.size());
                         
                     } catch (Exception e) {
                         logger.error("Error updating NIR", e);
