@@ -775,14 +775,14 @@ public class InvoicesController {
         
         // Setup action buttons column
         nirActionsColumn.setCellFactory(param -> new javafx.scene.control.TableCell<>() {
-            private final javafx.scene.control.Button viewBtn = new javafx.scene.control.Button("👁️ View");
+            private final javafx.scene.control.Button editBtn = new javafx.scene.control.Button("✏️ Edit");
             private final javafx.scene.control.Button pdfBtn = new javafx.scene.control.Button("📄 PDF");
-            private final javafx.scene.layout.HBox pane = new javafx.scene.layout.HBox(5, viewBtn, pdfBtn);
+            private final javafx.scene.layout.HBox pane = new javafx.scene.layout.HBox(5, editBtn, pdfBtn);
             
             {
-                viewBtn.setOnAction(event -> {
+                editBtn.setOnAction(event -> {
                     ReceptionNote nir = getTableView().getItems().get(getIndex());
-                    viewReceptionNote(nir);
+                    editReceptionNote(nir);
                 });
                 
                 pdfBtn.setOnAction(event -> {
@@ -801,31 +801,162 @@ public class InvoicesController {
         nirTable.setItems(receptionNotes);
     }
     
-    private void viewReceptionNote(ReceptionNote nir) {
+    private void editReceptionNote(ReceptionNote nir) {
         try {
-            javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.INFORMATION);
-            alert.setTitle("Detalii NIR");
-            alert.setHeaderText("NIR: " + nir.getNirNumber());
+            javafx.scene.control.Dialog<javafx.scene.control.ButtonType> dialog = new javafx.scene.control.Dialog<>();
+            dialog.setTitle("Editare NIR");
+            dialog.setHeaderText("NIR: " + nir.getNirNumber());
             
-            StringBuilder content = new StringBuilder();
-            content.append("Data NIR: ").append(nir.getNirDate().format(DateTimeFormatter.ofPattern("dd.MM.yyyy"))).append("\n");
-            content.append("Status: ").append(nir.getStatus()).append("\n");
-            content.append("Furnizor: ").append(nir.getInvoice() != null ? nir.getInvoice().getSupplierName() : "").append("\n");
-            content.append("Factură: ").append(nir.getInvoice() != null ? nir.getInvoice().getInvoiceNumber() : "").append("\n");
-            content.append("Total: ").append(nir.getTotalValue()).append(" lei\n");
+            // Create editable form
+            javafx.scene.layout.GridPane grid = new javafx.scene.layout.GridPane();
+            grid.setHgap(10);
+            grid.setVgap(10);
+            grid.setPadding(new javafx.geometry.Insets(20, 150, 10, 10));
             
-            if (nir.getHasDiscrepancies()) {
-                content.append("\n⚠️ Diferențe constatate!\n");
-                content.append("Note: ").append(nir.getDiscrepanciesNotes());
-            }
+            // NIR Number (read-only)
+            javafx.scene.control.TextField nirNumberField = new javafx.scene.control.TextField(nir.getNirNumber());
+            nirNumberField.setEditable(false);
             
-            alert.setContentText(content.toString());
-            alert.showAndWait();
+            // NIR Date
+            javafx.scene.control.DatePicker nirDatePicker = new javafx.scene.control.DatePicker(
+                nir.getNirDate() != null ? nir.getNirDate().toLocalDate() : LocalDate.now()
+            );
+            
+            // Status
+            javafx.scene.control.ComboBox<ReceptionNote.NirStatus> statusCombo = new javafx.scene.control.ComboBox<>();
+            statusCombo.getItems().addAll(ReceptionNote.NirStatus.values());
+            statusCombo.setValue(nir.getStatus());
+            
+            // Company Name
+            javafx.scene.control.TextField companyNameField = new javafx.scene.control.TextField(
+                nir.getCompanyName() != null ? nir.getCompanyName() : ""
+            );
+            
+            // Company Address
+            javafx.scene.control.TextField companyAddressField = new javafx.scene.control.TextField(
+                nir.getCompanyAddress() != null ? nir.getCompanyAddress() : ""
+            );
+            
+            // Delivery Note Number
+            javafx.scene.control.TextField deliveryNoteField = new javafx.scene.control.TextField(
+                nir.getDeliveryNoteNumber() != null ? nir.getDeliveryNoteNumber() : ""
+            );
+            
+            // Reception Date
+            javafx.scene.control.DatePicker receptionDatePicker = new javafx.scene.control.DatePicker(
+                nir.getReceptionDate() != null ? nir.getReceptionDate().toLocalDate() : LocalDate.now()
+            );
+            
+            // Committee members
+            javafx.scene.control.TextField committee1Field = new javafx.scene.control.TextField(
+                nir.getCommittee1Name() != null ? nir.getCommittee1Name() : ""
+            );
+            javafx.scene.control.TextField committee2Field = new javafx.scene.control.TextField(
+                nir.getCommittee2Name() != null ? nir.getCommittee2Name() : ""
+            );
+            javafx.scene.control.TextField committee3Field = new javafx.scene.control.TextField(
+                nir.getCommittee3Name() != null ? nir.getCommittee3Name() : ""
+            );
+            
+            // Warehouse Manager
+            javafx.scene.control.TextField warehouseManagerField = new javafx.scene.control.TextField(
+                nir.getWarehouseManagerName() != null ? nir.getWarehouseManagerName() : ""
+            );
+            
+            // Discrepancies Notes
+            javafx.scene.control.TextArea discrepanciesArea = new javafx.scene.control.TextArea(
+                nir.getDiscrepanciesNotes() != null ? nir.getDiscrepanciesNotes() : ""
+            );
+            discrepanciesArea.setPrefRowCount(3);
+            
+            // Add all fields to grid
+            int row = 0;
+            grid.add(new javafx.scene.control.Label("Număr NIR:"), 0, row);
+            grid.add(nirNumberField, 1, row++);
+            
+            grid.add(new javafx.scene.control.Label("Data NIR:"), 0, row);
+            grid.add(nirDatePicker, 1, row++);
+            
+            grid.add(new javafx.scene.control.Label("Status:"), 0, row);
+            grid.add(statusCombo, 1, row++);
+            
+            grid.add(new javafx.scene.control.Label("Companie:"), 0, row);
+            grid.add(companyNameField, 1, row++);
+            
+            grid.add(new javafx.scene.control.Label("Adresă Companie:"), 0, row);
+            grid.add(companyAddressField, 1, row++);
+            
+            grid.add(new javafx.scene.control.Label("Aviz Însoțire:"), 0, row);
+            grid.add(deliveryNoteField, 1, row++);
+            
+            grid.add(new javafx.scene.control.Label("Data Recepție:"), 0, row);
+            grid.add(receptionDatePicker, 1, row++);
+            
+            grid.add(new javafx.scene.control.Label("Membru Comisie 1:"), 0, row);
+            grid.add(committee1Field, 1, row++);
+            
+            grid.add(new javafx.scene.control.Label("Membru Comisie 2:"), 0, row);
+            grid.add(committee2Field, 1, row++);
+            
+            grid.add(new javafx.scene.control.Label("Membru Comisie 3:"), 0, row);
+            grid.add(committee3Field, 1, row++);
+            
+            grid.add(new javafx.scene.control.Label("Gestionar:"), 0, row);
+            grid.add(warehouseManagerField, 1, row++);
+            
+            grid.add(new javafx.scene.control.Label("Observații/Diferențe:"), 0, row);
+            grid.add(discrepanciesArea, 1, row++);
+            
+            dialog.getDialogPane().setContent(grid);
+            
+            // Add buttons
+            dialog.getDialogPane().getButtonTypes().addAll(
+                javafx.scene.control.ButtonType.OK,
+                javafx.scene.control.ButtonType.CANCEL
+            );
+            
+            // Process result
+            dialog.showAndWait().ifPresent(response -> {
+                if (response == javafx.scene.control.ButtonType.OK) {
+                    try {
+                        // Update NIR object
+                        nir.setNirDate(nirDatePicker.getValue().atStartOfDay());
+                        nir.setStatus(statusCombo.getValue());
+                        nir.setCompanyName(companyNameField.getText());
+                        nir.setCompanyAddress(companyAddressField.getText());
+                        nir.setDeliveryNoteNumber(deliveryNoteField.getText());
+                        nir.setReceptionDate(receptionDatePicker.getValue().atStartOfDay());
+                        nir.setCommittee1Name(committee1Field.getText());
+                        nir.setCommittee2Name(committee2Field.getText());
+                        nir.setCommittee3Name(committee3Field.getText());
+                        nir.setWarehouseManagerName(warehouseManagerField.getText());
+                        nir.setDiscrepanciesNotes(discrepanciesArea.getText());
+                        
+                        // Save to database
+                        receptionNoteService.saveReceptionNote(nir);
+                        
+                        // Refresh table
+                        loadReceptionNotes();
+                        
+                        showSuccessMessage("NIR actualizat cu succes!");
+                        logger.info("NIR updated: {}", nir.getNirNumber());
+                        
+                    } catch (Exception e) {
+                        logger.error("Error updating NIR", e);
+                        showError("Eroare la salvarea NIR: " + e.getMessage());
+                    }
+                }
+            });
             
         } catch (Exception e) {
-            logger.error("Error viewing NIR", e);
-            showError("Eroare la vizualizarea NIR: " + e.getMessage());
+            logger.error("Error editing NIR", e);
+            showError("Eroare la editarea NIR: " + e.getMessage());
         }
+    }
+    
+    private void viewReceptionNote(ReceptionNote nir) {
+        // For backward compatibility, redirect to edit
+        editReceptionNote(nir);
     }
     
     private void exportReceptionNotePdf(ReceptionNote nir) {

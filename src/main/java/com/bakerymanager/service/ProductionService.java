@@ -122,6 +122,10 @@ public class ProductionService {
         return productionReportRepository.findAllOrderByProductionDateDesc();
     }
     
+    public ProductionReport saveProductionReport(ProductionReport report) {
+        return productionReportRepository.save(report);
+    }
+    
     public List<ProductionReport> getProductionReportsByProduct(Product product) {
         return productionReportRepository.findByProductOrderByProductionDateDesc(product);
     }
