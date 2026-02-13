@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.geometry.Insets?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.bakerymanager.controller.LoginController"
+            prefWidth="400" prefHeight="300" stylesheets="@../css/style.css">
+    
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+    
+    <center>
+        <VBox spacing="20" alignment="CENTER">
+            <!-- Title -->
+            <Label text="MAGSELL 2.0" styleClass="label-title" style="-fx-font-size: 24px; -fx-font-weight: bold;"/>
+            <Label text="BakeryManager Pro" styleClass="label-subtitle" style="-fx-font-size: 14px;"/>
+            
+            <Separator prefWidth="300"/>
+            
+            <!-- Login Form -->
+            <GridPane hgap="10" vgap="15" alignment="CENTER">
+                <columnConstraints>
+                    <ColumnConstraints minWidth="100" prefWidth="100"/>
+                    <ColumnConstraints minWidth="200" prefWidth="200"/>
+                </columnConstraints>
+                
+                <Label text="Utilizator:" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                <TextField fx:id="usernameField" GridPane.rowIndex="0" GridPane.columnIndex="1" 
+                          promptText="Nume utilizator"/>
+                
+                <Label text="Parolă:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                <PasswordField fx:id="passwordField" GridPane.rowIndex="1" GridPane.columnIndex="1"
+                              promptText="Introduceți parola"/>
+            </GridPane>
+            
+            <!-- Status Label -->
+            <Label fx:id="statusLabel" text="" style="-fx-font-size: 12px;"/>
+            
+            <!-- Buttons -->
+            <HBox spacing="10" alignment="CENTER">
+                <Button fx:id="loginButton" text="🔐 Autentificare" onAction="#handleLogin" 
+                       styleClass="button, success" prefWidth="150"/>
+                <Button text="✖ Anulează" onAction="#handleCancel" 
+                       styleClass="button, danger" prefWidth="120"/>
+            </HBox>
+            
+            <Separator prefWidth="300"/>
+            
+            <!-- Default credentials info -->
+            <VBox spacing="5" alignment="CENTER">
+                <Label text="Utilizatori impliciti:" style="-fx-font-size: 10px; -fx-text-fill: gray;"/>
+                <Label text="Admin: admin / admin123" style="-fx-font-size: 10px; -fx-text-fill: gray;"/>
+                <Label text="Casier: casier / casier123" style="-fx-font-size: 10px; -fx-text-fill: gray;"/>
+            </VBox>
+        </VBox>
+    </center>
+    
+</BorderPane>

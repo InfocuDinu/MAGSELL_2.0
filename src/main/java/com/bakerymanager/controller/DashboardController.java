@@ -29,16 +29,22 @@ public class DashboardController {
     }
     
     @FXML
-    private Label productsInStockLabel;
-    
-    @FXML
-    private Label ingredientsInStockLabel;
+    private Label totalProductsLabel;
     
     @FXML
     private Label lowStockLabel;
     
     @FXML
     private Label todaySalesLabel;
+    
+    @FXML
+    private Label totalSalesLabel;
+    
+    @FXML
+    private Label statusLabel;
+    
+    @FXML
+    private Label lastUpdateLabel;
     
     @FXML
     private TableView<ActivityRecord> activityTable;
@@ -97,21 +103,33 @@ public class DashboardController {
     }
     
     private void loadDashboardData() {
-        long productsInStock = productService.countAvailableProducts();
-        long ingredientsInStock = ingredientService.countAvailableIngredients();
-        long lowStockCount = ingredientService.countLowStockIngredients();
-        
-        productsInStockLabel.setText(String.valueOf(productsInStock));
-        ingredientsInStockLabel.setText(String.valueOf(ingredientsInStock));
-        lowStockLabel.setText(String.valueOf(lowStockCount));
-        todaySalesLabel.setText("0.00 lei");
-        
-        activityRecords.add(new ActivityRecord(
-            LocalDateTime.now(),
-            "System",
-            "Dashboard încărcat",
-            "Admin"
-        ));
+        try {
+            long productsInStock = productService.countAvailableProducts();
+            long lowStockCount = ingredientService.countLowStockIngredients();
+            
+            totalProductsLabel.setText(String.valueOf(productsInStock));
+            lowStockLabel.setText(String.valueOf(lowStockCount));
+            todaySalesLabel.setText("0.00 lei");
+            totalSalesLabel.setText("0.00 lei");
+            statusLabel.setText("Sistem operațional");
+            lastUpdateLabel.setText("Ultima actualizare: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")));
+            
+            activityRecords.add(new ActivityRecord(
+                LocalDateTime.now(),
+                "System",
+                "Dashboard încărcat",
+                "Admin"
+            ));
+            
+            logger.info("Dashboard data loaded successfully");
+        } catch (Exception e) {
+            logger.error("Error loading dashboard data", e);
+            totalProductsLabel.setText("--");
+            lowStockLabel.setText("--");
+            todaySalesLabel.setText("-- lei");
+            totalSalesLabel.setText("-- lei");
+            statusLabel.setText("Eroare la încărcare");
+        }
     }
     
     @FXML

@@ -54,7 +54,14 @@
             <!-- Recent Activity -->
             <VBox styleClass="card" spacing="20" prefHeight="200">
                 <Label text="Activitate Recente" styleClass="label-title"/>
-                <TableView fx:id="activityTable" styleClass="table-view"/>
+                <TableView fx:id="activityTable" styleClass="table-view">
+                    <columns>
+                        <TableColumn fx:id="activityDateColumn" text="Data" prefWidth="150"/>
+                        <TableColumn fx:id="activityTypeColumn" text="Tip" prefWidth="100"/>
+                        <TableColumn fx:id="activityDescriptionColumn" text="Descriere" prefWidth="300"/>
+                        <TableColumn fx:id="activityUserColumn" text="Utilizator" prefWidth="100"/>
+                    </columns>
+                </TableView>
             </VBox>
             
         </VBox>
@@ -73,10 +80,3 @@
     </bottom>
     
 </BorderPane>
-                <TableColumn fx:id="activityDescriptionColumn" text="Descriere" prefWidth="300"/>
-                <TableColumn fx:id="activityUserColumn" text="Utilizator" prefWidth="100"/>
-            </columns>
-        </TableView>
-    </VBox>
-    
-</VBox>

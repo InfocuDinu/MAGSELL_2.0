@@ -5,7 +5,7 @@
 <?import javafx.geometry.Insets?>
 
 <BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
-            fx:controller="com.bakerymanager.controller.POSController">
+            fx:controller="com.bakerymanager.controller.POSController" stylesheets="@../css/style.css">
     
     <padding>
         <Insets top="20" right="20" bottom="20" left="20"/>
@@ -26,6 +26,7 @@
                 <Label text="Categorii:" styleClass="label-subtitle"/>
                 <ComboBox fx:id="categoryComboBox" promptText="Toate produsele" prefWidth="150"/>
                 <Button text="🔄 Reîncarcă Produse" onAction="#loadProducts" styleClass="button, primary"/>
+                <Button text="➕ Introduceți Manual" onAction="#addProductManually" styleClass="button, success"/>
             </HBox>
         </VBox>
     </top>

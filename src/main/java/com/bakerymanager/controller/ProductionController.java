@@ -1,11 +1,13 @@
 package com.bakerymanager.controller;
 
 import com.bakerymanager.entity.Product;
+import com.bakerymanager.entity.ProductionReport;
 import com.bakerymanager.entity.RecipeItem;
 import com.bakerymanager.entity.Ingredient;
 import com.bakerymanager.service.IngredientService;
 import com.bakerymanager.service.ProductionService;
 import com.bakerymanager.service.ProductService;
+import com.bakerymanager.service.PdfService;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -14,11 +16,14 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
 import javafx.geometry.Insets;
+import javafx.stage.FileChooser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
 
+import java.io.File;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -32,13 +37,16 @@ public class ProductionController {
     private final ProductionService productionService;
     private final ProductService productService;
     private final IngredientService ingredientService;
+    private final PdfService pdfService;
     
     public ProductionController(ProductionService productionService, 
                               ProductService productService,
-                              IngredientService ingredientService) {
+                              IngredientService ingredientService,
+                              PdfService pdfService) {
         this.productionService = productionService;
         this.productService = productService;
         this.ingredientService = ingredientService;
+        this.pdfService = pdfService;
     }
     
     @FXML
@@ -98,12 +106,25 @@ public class ProductionController {
         private String productName;
         private BigDecimal quantity;
         private String status;
+        private ProductionReport report; // Store the actual report entity
         
         public ProductionRecord(LocalDateTime date, String productName, BigDecimal quantity, String status) {
             this.date = date;
             this.productName = productName;
             this.quantity = quantity;
             this.status = status;
+        }
+        
+        public ProductionRecord(ProductionReport report) {
+            this.report = report;
+            this.date = report.getProductionDate() != null ? report.getProductionDate() : LocalDateTime.now();
+            this.productName = report.getProduct() != null ? report.getProduct().getName() : "";
+            this.quantity = report.getQuantityProduced();
+            this.status = report.getStatus() != null ? report.getStatus().name() : "";
+        }
+        
+        public ProductionReport getReport() {
+            return report;
         }
         
         public String getFormattedDate() {
@@ -279,7 +300,20 @@ public class ProductionController {
     }
     
     private void refreshProductionHistory() {
-        productionHistory.clear();
+        try {
+            productionHistory.clear();
+            List<com.bakerymanager.entity.ProductionReport> reports = productionService.getAllProductionReports();
+            
+            for (com.bakerymanager.entity.ProductionReport report : reports) {
+                ProductionRecord record = new ProductionRecord(report);
+                productionHistory.add(record);
+            }
+            
+            logger.info("Loaded {} production reports", reports.size());
+        } catch (Exception e) {
+            logger.error("Error loading production history", e);
+            showError("Eroare la încărcarea istoricului: " + e.getMessage());
+        }
     }
 
     @FXML
@@ -568,12 +602,8 @@ public class ProductionController {
             
             productionService.executeProduction(selectedProduct.getId(), quantity);
             
-            productionHistory.add(0, new ProductionRecord(
-                LocalDateTime.now(),
-                selectedProduct.getName(),
-                quantity,
-                "Succes"
-            ));
+            // Reload production history from database
+            refreshProductionHistory();
             
             loadProducts();
             loadRecipe();
@@ -824,6 +854,196 @@ public class ProductionController {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.show();
+    }
+    
+    @FXML
+    public void exportProductionReportPdf() {
+        try {
+            // Get selected production record from history table
+            ProductionRecord selectedRecord = productionHistoryTable.getSelectionModel().getSelectedItem();
+            
+            if (selectedRecord == null) {
+                showError("Vă rugăm să selectați un raport de producție din istoric.");
+                return;
+            }
+            
+            ProductionReport selectedReport = selectedRecord.getReport();
+            if (selectedReport == null) {
+                showError("Raportul de producție selectat nu are date complete.");
+                return;
+            }
+            
+            // Create file chooser
+            FileChooser fileChooser = new FileChooser();
+            fileChooser.setTitle("Salvează Raport de Producție PDF");
+            
+            // Set default filename
+            String productName = selectedReport.getProduct() != null ? selectedReport.getProduct().getName() : "Produs";
+            String date = selectedReport.getProductionDate() != null 
+                ? selectedReport.getProductionDate().format(DateTimeFormatter.ofPattern("yyyyMMdd"))
+                : LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+            fileChooser.setInitialFileName("Raport_Productie_" + productName + "_" + date + ".pdf");
+            
+            // Set extension filter
+            fileChooser.getExtensionFilters().add(
+                new FileChooser.ExtensionFilter("PDF Files", "*.pdf")
+            );
+            
+            // Show save dialog
+            File file = fileChooser.showSaveDialog(productionHistoryTable.getScene().getWindow());
+            
+            if (file != null) {
+                // Generate PDF
+                pdfService.generateProductionReportPdf(selectedReport, file.getAbsolutePath());
+                
+                showSuccessMessage("Raport exportat cu succes în: " + file.getAbsolutePath());
+                logger.info("Production report exported to PDF: {}", file.getAbsolutePath());
+            }
+            
+        } catch (Exception e) {
+            logger.error("Error exporting production report to PDF", e);
+            showError("Eroare la exportarea raportului: " + e.getMessage());
+        }
+    }
+    
+    @FXML
+    public void editProductionReport() {
+        try {
+            // Get selected production record from history table
+            ProductionRecord selectedRecord = productionHistoryTable.getSelectionModel().getSelectedItem();
+            
+            if (selectedRecord == null) {
+                showError("Vă rugăm să selectați un raport de producție din istoric.");
+                return;
+            }
+            
+            ProductionReport selectedReport = selectedRecord.getReport();
+            if (selectedReport == null) {
+                showError("Raportul de producție selectat nu are date complete.");
+                return;
+            }
+            
+            // Create editable dialog
+            Dialog<ButtonType> dialog = new Dialog<>();
+            dialog.setTitle("Editare Raport de Producție");
+            dialog.setHeaderText("Editare Raport: " + selectedReport.getProduct().getName());
+            
+            // Create form
+            GridPane grid = new GridPane();
+            grid.setHgap(10);
+            grid.setVgap(10);
+            grid.setPadding(new javafx.geometry.Insets(20, 150, 10, 10));
+            
+            // Product name (read-only)
+            TextField productField = new TextField(selectedReport.getProduct().getName());
+            productField.setEditable(false);
+            
+            // Quantity produced
+            TextField quantityField = new TextField(selectedReport.getQuantityProduced().toString());
+            
+            // Production date/time
+            DatePicker datePicker = new DatePicker(
+                selectedReport.getProductionDate() != null 
+                    ? selectedReport.getProductionDate().toLocalDate() 
+                    : LocalDate.now()
+            );
+            
+            // Time fields
+            Spinner<Integer> hourSpinner = new Spinner<>(0, 23, 
+                selectedReport.getProductionDate() != null 
+                    ? selectedReport.getProductionDate().getHour() 
+                    : LocalDateTime.now().getHour()
+            );
+            hourSpinner.setEditable(true);
+            
+            Spinner<Integer> minuteSpinner = new Spinner<>(0, 59, 
+                selectedReport.getProductionDate() != null 
+                    ? selectedReport.getProductionDate().getMinute() 
+                    : LocalDateTime.now().getMinute()
+            );
+            minuteSpinner.setEditable(true);
+            
+            // Status
+            ComboBox<ProductionReport.ProductionStatus> statusCombo = new ComboBox<>();
+            statusCombo.getItems().addAll(ProductionReport.ProductionStatus.values());
+            statusCombo.setValue(selectedReport.getStatus());
+            
+            // Notes
+            TextArea notesArea = new TextArea(
+                selectedReport.getNotes() != null ? selectedReport.getNotes() : ""
+            );
+            notesArea.setPrefRowCount(3);
+            
+            // Add fields to grid
+            int row = 0;
+            grid.add(new Label("Produs:"), 0, row);
+            grid.add(productField, 1, row++);
+            
+            grid.add(new Label("Cantitate Produsă:"), 0, row);
+            grid.add(quantityField, 1, row++);
+            
+            grid.add(new Label("Data Producție:"), 0, row);
+            grid.add(datePicker, 1, row++);
+            
+            grid.add(new Label("Ora:"), 0, row);
+            javafx.scene.layout.HBox timeBox = new javafx.scene.layout.HBox(5, hourSpinner, new Label(":"), minuteSpinner);
+            grid.add(timeBox, 1, row++);
+            
+            grid.add(new Label("Status:"), 0, row);
+            grid.add(statusCombo, 1, row++);
+            
+            grid.add(new Label("Observații:"), 0, row);
+            grid.add(notesArea, 1, row++);
+            
+            dialog.getDialogPane().setContent(grid);
+            
+            // Add buttons
+            dialog.getDialogPane().getButtonTypes().addAll(
+                ButtonType.OK,
+                ButtonType.CANCEL
+            );
+            
+            // Process result
+            dialog.showAndWait().ifPresent(response -> {
+                if (response == ButtonType.OK) {
+                    try {
+                        // Validate quantity
+                        BigDecimal newQuantity = new BigDecimal(quantityField.getText());
+                        if (newQuantity.compareTo(BigDecimal.ZERO) <= 0) {
+                            showError("Cantitatea trebuie să fie mai mare decât 0");
+                            return;
+                        }
+                        
+                        // Update report object
+                        selectedReport.setQuantityProduced(newQuantity);
+                        selectedReport.setProductionDate(
+                            datePicker.getValue().atTime(hourSpinner.getValue(), minuteSpinner.getValue())
+                        );
+                        selectedReport.setStatus(statusCombo.getValue());
+                        selectedReport.setNotes(notesArea.getText());
+                        
+                        // Save to database
+                        productionService.saveProductionReport(selectedReport);
+                        
+                        // Refresh table
+                        refreshProductionHistory();
+                        
+                        showSuccessMessage("Raport de producție actualizat cu succes!");
+                        logger.info("Production report updated: {}", selectedReport.getId());
+                        
+                    } catch (NumberFormatException e) {
+                        showError("Cantitatea trebuie să fie un număr valid");
+                    } catch (Exception e) {
+                        logger.error("Error updating production report", e);
+                        showError("Eroare la salvarea raportului: " + e.getMessage());
+                    }
+                }
+            });
+            
+        } catch (Exception e) {
+            logger.error("Error editing production report", e);
+            showError("Eroare la editarea raportului: " + e.getMessage());
+        }
     }
     
     private void showError(String message) {

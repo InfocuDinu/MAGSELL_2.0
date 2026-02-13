@@ -7,6 +7,21 @@ import java.math.BigDecimal;
 @Table(name = "invoice_lines")
 public class InvoiceLine {
     
+    public enum ProductType {
+        MATERIE_PRIMA("Materie Primă"),
+        MARFA("Marfă");
+        
+        private final String displayName;
+        
+        ProductType(String displayName) {
+            this.displayName = displayName;
+        }
+        
+        public String getDisplayName() {
+            return displayName;
+        }
+    }
+    
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -31,10 +46,17 @@ public class InvoiceLine {
     @Column(name = "total_price", nullable = false, precision = 12, scale = 2)
     private BigDecimal totalPrice;
     
+    @Enumerated(EnumType.STRING)
+    @Column(name = "product_type")
+    private ProductType productType;
+    
     @PrePersist
     protected void onCreate() {
         if (totalPrice == null) {
             calculateTotal();
+        }
+        if (productType == null) {
+            productType = ProductType.MATERIE_PRIMA; // Default to raw material
         }
     }
     
@@ -65,4 +87,7 @@ public class InvoiceLine {
     
     public BigDecimal getTotalPrice() { return totalPrice; }
     public void setTotalPrice(BigDecimal totalPrice) { this.totalPrice = totalPrice; }
+    
+    public ProductType getProductType() { return productType; }
+    public void setProductType(ProductType productType) { this.productType = productType; }
 }

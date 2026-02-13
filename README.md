@@ -7,7 +7,7 @@ BakeryManager Pro este o aplicație desktop ERP completă pentru gestionarea une
 ## Arhitectură
 
 ### Stack Tehnologic
-- **Limbaj:** Java 21 (LTS)
+- **Limbaj:** Java 17 (LTS)
 - **UI Framework:** JavaFX 21 (Modular)
 - **Backend:** Spring Boot 3.2+ (Dependency Injection, JPA)
 - **Baza de date:** SQLite (embedded, portabil)
@@ -66,7 +66,7 @@ com.bakerymanager
 ## Instalare și Rulare
 
 ### Prerechizite
-- Java 21 JDK instalat
+- Java 17 JDK instalat
 - Maven 3.6+ instalat
 
 ### Pași de Instalare

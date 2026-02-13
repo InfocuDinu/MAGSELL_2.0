@@ -5,7 +5,8 @@
 <?import javafx.geometry.Insets?>
 
 <VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="com.bakerymanager.controller.InvoicesController" spacing="20">
+      fx:controller="com.bakerymanager.controller.InvoicesController" spacing="20"
+      stylesheets="@../css/style.css">
     
     <padding>
         <Insets top="20" right="20" bottom="20" left="20"/>
@@ -18,6 +19,7 @@
         
         <Button text="📥 Import SPV" onAction="#importSPVInvoice" styleClass="button, success"/>
         <Button text="➕ Manuală" onAction="#createManualInvoice" styleClass="button, primary"/>
+        <Button text="📋 Generează NIR" onAction="#generateNIR" styleClass="button, info"/>
     </HBox>
     
     <!-- Statistics -->
@@ -39,7 +41,7 @@
     </HBox>
     
     <!-- Invoices Table -->
-    <TableView fx:id="invoicesTable" VBox.vgrow="ALWAYS">
+    <TableView fx:id="invoicesTable" prefHeight="300">
         <columns>
             <TableColumn fx:id="invoiceNumberColumn" text="Număr Factură" prefWidth="150"/>
             <TableColumn fx:id="supplierColumn" text="Furnizor" prefWidth="200"/>
@@ -49,5 +51,26 @@
             <TableColumn fx:id="actionsColumn" text="Acțiuni" prefWidth="120"/>
         </columns>
     </TableView>
+    
+    <!-- NIR Section -->
+    <VBox spacing="10">
+        <HBox alignment="CENTER_LEFT" spacing="10">
+            <Label text="Note de Intrare Recepție (NIR)" styleClass="label-title"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Button text="🔄 Reîncarcă" onAction="#loadReceptionNotes" styleClass="button"/>
+        </HBox>
+        
+        <TableView fx:id="nirTable" prefHeight="300">
+            <columns>
+                <TableColumn fx:id="nirNumberColumn" text="Număr NIR" prefWidth="150"/>
+                <TableColumn fx:id="nirInvoiceColumn" text="Factură" prefWidth="120"/>
+                <TableColumn fx:id="nirDateColumn" text="Data" prefWidth="100"/>
+                <TableColumn fx:id="nirStatusColumn" text="Status" prefWidth="80"/>
+                <TableColumn fx:id="nirSupplierColumn" text="Furnizor" prefWidth="150"/>
+                <TableColumn fx:id="nirTotalColumn" text="Total" prefWidth="100"/>
+                <TableColumn fx:id="nirActionsColumn" text="Acțiuni" prefWidth="150"/>
+            </columns>
+        </TableView>
+    </VBox>
     
 </VBox>

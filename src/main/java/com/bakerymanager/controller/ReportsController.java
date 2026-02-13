@@ -431,4 +431,82 @@ public class ReportsController {
         alert.setContentText(message);
         alert.show();
     }
+    
+    @FXML
+    public void printReport() {
+        try {
+            String reportContent = reportContentArea.getText();
+            
+            if (reportContent == null || reportContent.trim().isEmpty()) {
+                showInfo("Generați mai întâi un raport pentru a-l imprima!");
+                return;
+            }
+            
+            // Create a simple print job using JavaFX PrinterJob
+            javafx.print.PrinterJob printerJob = javafx.print.PrinterJob.createPrinterJob();
+            
+            if (printerJob != null) {
+                // Show print dialog to user
+                boolean proceed = printerJob.showPrintDialog(reportContentArea.getScene().getWindow());
+                
+                if (proceed) {
+                    // Create a temporary TextArea for printing (to avoid affecting the visible one)
+                    TextArea printArea = new TextArea(reportContent);
+                    printArea.setWrapText(true);
+                    printArea.setEditable(false);
+                    
+                    // Print the content
+                    boolean success = printerJob.printPage(printArea);
+                    
+                    if (success) {
+                        printerJob.endJob();
+                        showInfo("Raportul a fost trimis la imprimantă!");
+                        logger.info("Report printed successfully");
+                    } else {
+                        showError("Eroare la trimiterea raportului la imprimantă.");
+                        logger.error("Failed to print report");
+                    }
+                } else {
+                    logger.info("User cancelled printing");
+                }
+            } else {
+                showError("Nu s-a putut crea job-ul de printare. Verificați că aveți o imprimantă configurată.");
+                logger.error("PrinterJob could not be created");
+            }
+            
+        } catch (Exception e) {
+            logger.error("Error printing report", e);
+            showError("Eroare la printarea raportului: " + e.getMessage());
+        }
+    }
+    
+    @FXML
+    public void sendEmail() {
+        try {
+            String reportContent = reportContentArea.getText();
+            String reportType = reportTypeCombo.getValue();
+            
+            if (reportContent == null || reportContent.trim().isEmpty()) {
+                showInfo("Generați mai întâi un raport pentru a-l trimite prin email!");
+                return;
+            }
+            
+            // This is a placeholder for future email functionality
+            // In production, this would integrate with JavaMail API or similar
+            showInfo("Funcționalitatea de trimitere email este în dezvoltare.\n\n" +
+                     "Funcționalități viitoare:\n" +
+                     "- Configurare server SMTP\n" +
+                     "- Selectare destinatari\n" +
+                     "- Atașare raport PDF\n" +
+                     "- Șablon personalizabil pentru email\n\n" +
+                     "Pentru moment, folosiți funcția 'Export PDF' și " +
+                     "trimiteți manual raportul prin email.");
+            
+            logger.info("Email send requested for report: {}", reportType);
+            
+        } catch (Exception e) {
+            logger.error("Error in sendEmail", e);
+            showError("Eroare: " + e.getMessage());
+        }
+    }
 }

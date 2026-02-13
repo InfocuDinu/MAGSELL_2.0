@@ -18,7 +18,7 @@
             <HBox alignment="CENTER_LEFT" spacing="20">
                 <Label text="Gestiune Stocuri" styleClass="header-title"/>
                 <Region HBox.hgrow="ALWAYS"/>
-                <Button text="➕ Adaugă Ingredient" onAction="#addIngredient" styleClass="button success"/>
+                <Button text="➕ Adaugă Produs" onAction="#addIngredient" styleClass="button success"/>
             </HBox>
         </VBox>
     </top>
@@ -26,10 +26,10 @@
     <center>
         <SplitPane dividerPositions="0.3" orientation="HORIZONTAL">
             
-            <!-- Ingredients Table -->
+            <!-- Products Table -->
             <VBox spacing="20">
                 <HBox alignment="CENTER_LEFT" spacing="15">
-                    <Label text="Lista Ingrediente" styleClass="label-title"/>
+                    <Label text="Lista Produse/Ingrediente" styleClass="label-title"/>
                     <Region HBox.hgrow="ALWAYS"/>
                     <Button text="🔄 Reîncarcă" onAction="#loadIngredients" styleClass="button primary"/>
                 </HBox>
@@ -39,26 +39,29 @@
             
             <!-- Add/Edit Form -->
             <VBox styleClass="form-pane" spacing="20">
-                <Label text="Adaugă/Modifică Ingredient" styleClass="label-title"/>
+                <Label text="Adaugă/Modifică Produs" styleClass="label-title"/>
                 
                 <GridPane hgap="15" vgap="15">
                     <Label text="Nume:" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
                     <TextField fx:id="nameField" GridPane.rowIndex="0" GridPane.columnIndex="1" styleClass="text-field"/>
                     
-                    <Label text="Cantitate:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
-                    <TextField fx:id="quantityField" GridPane.rowIndex="1" GridPane.columnIndex="1" styleClass="text-field"/>
+                    <Label text="Tip Produs:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                    <ComboBox fx:id="productTypeCombo" GridPane.rowIndex="1" GridPane.columnIndex="1" styleClass="combo-box"/>
                     
-                    <Label text="Unitate:" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
-                    <ComboBox fx:id="unitCombo" GridPane.rowIndex="2" GridPane.columnIndex="1" styleClass="combo-box"/>
+                    <Label text="Cantitate:" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                    <TextField fx:id="quantityField" GridPane.rowIndex="2" GridPane.columnIndex="1" styleClass="text-field"/>
                     
-                    <Label text="Preț Achiziție:" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
-                    <TextField fx:id="priceField" GridPane.rowIndex="3" GridPane.columnIndex="1" styleClass="text-field"/>
+                    <Label text="Unitate:" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+                    <ComboBox fx:id="unitCombo" GridPane.rowIndex="3" GridPane.columnIndex="1" styleClass="combo-box"/>
                     
-                    <Label text="Stoc Minim:" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
-                    <TextField fx:id="minStockField" GridPane.rowIndex="4" GridPane.columnIndex="1" styleClass="text-field"/>
+                    <Label text="Preț Achiziție:" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
+                    <TextField fx:id="priceField" GridPane.rowIndex="4" GridPane.columnIndex="1" styleClass="text-field"/>
                     
-                    <Label text="Cod Bare:" GridPane.rowIndex="5" GridPane.columnIndex="0"/>
-                    <TextField fx:id="barcodeField" GridPane.rowIndex="5" GridPane.columnIndex="1" styleClass="text-field"/>
+                    <Label text="Stoc Minim:" GridPane.rowIndex="5" GridPane.columnIndex="0"/>
+                    <TextField fx:id="minStockField" GridPane.rowIndex="5" GridPane.columnIndex="1" styleClass="text-field"/>
+                    
+                    <Label text="Cod Bare:" GridPane.rowIndex="6" GridPane.columnIndex="0"/>
+                    <TextField fx:id="barcodeField" GridPane.rowIndex="6" GridPane.columnIndex="1" styleClass="text-field"/>
                 </GridPane>
                 
                 <HBox spacing="15" alignment="CENTER_RIGHT">
@@ -79,7 +82,7 @@
             </padding>
             <Label fx:id="statusLabel" text="Sistem gata de utilizare" styleClass="status-label"/>
             <Region HBox.hgrow="ALWAYS"/>
-            <Label fx:id="totalIngredientsLabel" text="Total ingrediente: 0" styleClass="status-label"/>
+            <Label fx:id="totalIngredientsLabel" text="Total produse: 0" styleClass="status-label"/>
         </HBox>
     </bottom>
     

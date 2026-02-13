@@ -148,6 +148,47 @@ public class InvoiceService {
         return invoiceRepository.save(invoice);
     }
     
+    @Transactional
+    public InvoiceLine saveInvoiceLine(InvoiceLine invoiceLine) {
+        return invoiceLineRepository.save(invoiceLine);
+    }
+    
+    @Transactional
+    public Invoice saveInvoiceWithLines(Invoice invoice, List<InvoiceLine> lines) {
+        // Save invoice first
+        Invoice savedInvoice = invoiceRepository.save(invoice);
+        
+        // Save each line - ingredients should already be persisted by controller
+        for (InvoiceLine line : lines) {
+            line.setInvoice(savedInvoice);
+            line.calculateTotal();
+            
+            // Verify ingredient is persisted (has an ID)
+            if (line.getIngredient() != null && line.getIngredient().getId() == null) {
+                logger.warn("InvoiceLine has transient ingredient: {}. Attempting to save ingredient first.", 
+                    line.getIngredient().getName());
+                // This should not happen if controller does its job, but as a safety measure:
+                Ingredient savedIngredient = ingredientService.saveIngredient(line.getIngredient());
+                line.setIngredient(savedIngredient);
+            }
+            
+            invoiceLineRepository.save(line);
+        }
+        
+        // Update invoice line count and total
+        savedInvoice.setNumberOfLines(lines.size());
+        BigDecimal total = lines.stream()
+            .map(InvoiceLine::getTotalPrice)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        savedInvoice.setTotalAmount(total);
+        
+        return invoiceRepository.save(savedInvoice);
+    }
+    
+    public List<InvoiceLine> getInvoiceLines(Long invoiceId) {
+        return invoiceLineRepository.findByInvoiceId(invoiceId);
+    }
+    
     public Invoice createManualInvoice(String invoiceNumber, String supplierName, 
                                      List<InvoiceLine> invoiceLines) {
         Invoice invoice = new Invoice();
