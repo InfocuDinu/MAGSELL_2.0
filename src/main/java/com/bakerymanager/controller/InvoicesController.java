@@ -31,6 +31,7 @@ import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -934,7 +935,13 @@ public class InvoicesController {
             
             // Product lines table
             javafx.scene.control.TableView<ReceptionNoteLine> linesTable = new javafx.scene.control.TableView<>();
-            javafx.collections.ObservableList<ReceptionNoteLine> lines = javafx.collections.FXCollections.observableArrayList(nir.getLines());
+            // Ensure lines list is never null
+            List<ReceptionNoteLine> nirLines = nir.getLines();
+            if (nirLines == null) {
+                nirLines = new ArrayList<>();
+                nir.setLines(nirLines);
+            }
+            javafx.collections.ObservableList<ReceptionNoteLine> lines = javafx.collections.FXCollections.observableArrayList(nirLines);
             linesTable.setItems(lines);
             linesTable.setEditable(true);
             linesTable.setPrefHeight(400);
@@ -1139,7 +1146,22 @@ public class InvoicesController {
             );
             
             // Apply SmartBill CSS style
-            dialog.getDialogPane().getStylesheets().add(getClass().getResource("/css/style.css").toExternalForm());
+            try {
+                var cssUrl = getClass().getResource("/css/style.css");
+                if (cssUrl != null) {
+                    dialog.getDialogPane().getStylesheets().add(cssUrl.toExternalForm());
+                } else {
+                    // Try alternative path
+                    cssUrl = getClass().getClassLoader().getResource("css/style.css");
+                    if (cssUrl != null) {
+                        dialog.getDialogPane().getStylesheets().add(cssUrl.toExternalForm());
+                    } else {
+                        logger.warn("Could not load CSS stylesheet for NIR dialog");
+                    }
+                }
+            } catch (Exception e) {
+                logger.warn("Error loading CSS stylesheet: " + e.getMessage());
+            }
             
             // Process result
             dialog.showAndWait().ifPresent(response -> {
