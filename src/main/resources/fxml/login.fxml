@@ -6,7 +6,7 @@
 
 <BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="com.bakerymanager.controller.LoginController"
-            prefWidth="400" prefHeight="300">
+            prefWidth="400" prefHeight="300" stylesheets="@../css/style.css">
     
     <padding>
         <Insets top="20" right="20" bottom="20" left="20"/>

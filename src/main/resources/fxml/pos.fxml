@@ -5,7 +5,7 @@
 <?import javafx.geometry.Insets?>
 
 <BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
-            fx:controller="com.bakerymanager.controller.POSController">
+            fx:controller="com.bakerymanager.controller.POSController" stylesheets="@../css/style.css">
     
     <padding>
         <Insets top="20" right="20" bottom="20" left="20"/>

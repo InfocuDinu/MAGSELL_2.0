@@ -939,6 +939,27 @@ public class InvoicesController {
             linesTable.setEditable(true);
             linesTable.setPrefHeight(400);
             
+            // Totals labels (declare early)
+            javafx.scene.control.Label totalValueLabel = new javafx.scene.control.Label();
+            javafx.scene.control.Label totalVatLabel = new javafx.scene.control.Label();
+            javafx.scene.control.Label grandTotalLabel = new javafx.scene.control.Label();
+            
+            // Update totals function (declare early so columns can reference it)
+            Runnable updateTotals = () -> {
+                BigDecimal totalNoVat = BigDecimal.ZERO;
+                BigDecimal totalVat = BigDecimal.ZERO;
+                for (ReceptionNoteLine line : lines) {
+                    if (line.getValueWithoutVAT() != null) totalNoVat = totalNoVat.add(line.getValueWithoutVAT());
+                    if (line.getVatAmount() != null) totalVat = totalVat.add(line.getVatAmount());
+                }
+                BigDecimal grandTotal = totalNoVat.add(totalVat);
+                
+                totalValueLabel.setText("Total fără TVA: " + totalNoVat.setScale(2, java.math.RoundingMode.HALF_UP) + " RON");
+                totalVatLabel.setText("TVA: " + totalVat.setScale(2, java.math.RoundingMode.HALF_UP) + " RON");
+                grandTotalLabel.setText("TOTAL: " + grandTotal.setScale(2, java.math.RoundingMode.HALF_UP) + " RON");
+                grandTotalLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
+            };
+            
             // Columns
             javafx.scene.control.TableColumn<ReceptionNoteLine, String> productCol = new javafx.scene.control.TableColumn<>("Produs");
             productCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("productName"));
@@ -969,8 +990,12 @@ public class InvoicesController {
             receivedQtyCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("receivedQuantity"));
             receivedQtyCol.setCellFactory(col -> new javafx.scene.control.cell.TextFieldTableCell<>(new javafx.util.converter.BigDecimalStringConverter()));
             receivedQtyCol.setOnEditCommit(event -> {
-                event.getRowValue().setReceivedQuantity(event.getNewValue());
+                ReceptionNoteLine line = event.getRowValue();
+                line.setReceivedQuantity(event.getNewValue());
+                line.calculateDifference();
+                line.calculateValues();
                 linesTable.refresh();
+                updateTotals.run();
             });
             receivedQtyCol.setPrefWidth(90);
             
@@ -999,8 +1024,11 @@ public class InvoicesController {
             unitPriceCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("unitPrice"));
             unitPriceCol.setCellFactory(col -> new javafx.scene.control.cell.TextFieldTableCell<>(new javafx.util.converter.BigDecimalStringConverter()));
             unitPriceCol.setOnEditCommit(event -> {
-                event.getRowValue().setUnitPrice(event.getNewValue());
+                ReceptionNoteLine line = event.getRowValue();
+                line.setUnitPrice(event.getNewValue());
+                line.calculateValues();
                 linesTable.refresh();
+                updateTotals.run();
             });
             unitPriceCol.setPrefWidth(80);
             
@@ -1008,8 +1036,11 @@ public class InvoicesController {
             vatRateCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("vatRate"));
             vatRateCol.setCellFactory(col -> new javafx.scene.control.cell.TextFieldTableCell<>(new javafx.util.converter.BigDecimalStringConverter()));
             vatRateCol.setOnEditCommit(event -> {
-                event.getRowValue().setVatRate(event.getNewValue());
+                ReceptionNoteLine line = event.getRowValue();
+                line.setVatRate(event.getNewValue());
+                line.calculateValues();
                 linesTable.refresh();
+                updateTotals.run();
             });
             vatRateCol.setPrefWidth(70);
             
@@ -1050,7 +1081,9 @@ public class InvoicesController {
             markupCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("markupPercentage"));
             markupCol.setCellFactory(col -> new javafx.scene.control.cell.TextFieldTableCell<>(new javafx.util.converter.BigDecimalStringConverter()));
             markupCol.setOnEditCommit(event -> {
-                event.getRowValue().setMarkupPercentage(event.getNewValue());
+                ReceptionNoteLine line = event.getRowValue();
+                line.setMarkupPercentage(event.getNewValue());
+                line.calculateSalePrice();
                 linesTable.refresh();
             });
             markupCol.setPrefWidth(80);
@@ -1059,7 +1092,9 @@ public class InvoicesController {
             salePriceCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("salePrice"));
             salePriceCol.setCellFactory(col -> new javafx.scene.control.cell.TextFieldTableCell<>(new javafx.util.converter.BigDecimalStringConverter()));
             salePriceCol.setOnEditCommit(event -> {
-                event.getRowValue().setSalePrice(event.getNewValue());
+                ReceptionNoteLine line = event.getRowValue();
+                line.setSalePrice(event.getNewValue());
+                line.calculateProfitMargin();
                 linesTable.refresh();
             });
             salePriceCol.setPrefWidth(90);
@@ -1073,27 +1108,6 @@ public class InvoicesController {
             linesTable.getColumns().addAll(productCol, codeCol, unitCol, invoicedQtyCol, receivedQtyCol, 
                                           diffCol, unitPriceCol, vatRateCol, valueNoVatCol, vatAmountCol, 
                                           totalCol, markupCol, salePriceCol, notesCol);
-            
-            // Totals labels
-            javafx.scene.control.Label totalValueLabel = new javafx.scene.control.Label();
-            javafx.scene.control.Label totalVatLabel = new javafx.scene.control.Label();
-            javafx.scene.control.Label grandTotalLabel = new javafx.scene.control.Label();
-            
-            // Update totals function
-            Runnable updateTotals = () -> {
-                BigDecimal totalNoVat = BigDecimal.ZERO;
-                BigDecimal totalVat = BigDecimal.ZERO;
-                for (ReceptionNoteLine line : lines) {
-                    if (line.getValueWithoutVAT() != null) totalNoVat = totalNoVat.add(line.getValueWithoutVAT());
-                    if (line.getVatAmount() != null) totalVat = totalVat.add(line.getVatAmount());
-                }
-                BigDecimal grandTotal = totalNoVat.add(totalVat);
-                
-                totalValueLabel.setText("Total fără TVA: " + totalNoVat.setScale(2, java.math.RoundingMode.HALF_UP) + " RON");
-                totalVatLabel.setText("TVA: " + totalVat.setScale(2, java.math.RoundingMode.HALF_UP) + " RON");
-                grandTotalLabel.setText("TOTAL: " + grandTotal.setScale(2, java.math.RoundingMode.HALF_UP) + " RON");
-                grandTotalLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
-            };
             
             // Initial totals
             updateTotals.run();
