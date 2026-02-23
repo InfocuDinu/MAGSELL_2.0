@@ -24,8 +24,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -404,7 +402,11 @@ public class InvoicesController {
             });
             typeCol.setPrefWidth(150);
             
-            linesTable.getColumns().addAll(productCol, quantityCol, priceCol, totalCol, typeCol);
+            linesTable.getColumns().add(productCol);
+            linesTable.getColumns().add(quantityCol);
+            linesTable.getColumns().add(priceCol);
+            linesTable.getColumns().add(totalCol);
+            linesTable.getColumns().add(typeCol);
             
             // Add line button
             javafx.scene.control.Button addLineButton = new javafx.scene.control.Button("➕ Adaugă Produs");
@@ -978,6 +980,23 @@ public class InvoicesController {
             javafx.scene.control.TableColumn<ReceptionNoteLine, String> unitCol = new javafx.scene.control.TableColumn<>("UM");
             unitCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("unit"));
             unitCol.setPrefWidth(60);
+
+            javafx.scene.control.TableColumn<ReceptionNoteLine, String> batchCol = new javafx.scene.control.TableColumn<>("Lot");
+            batchCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("batchCode"));
+            batchCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn());
+            batchCol.setOnEditCommit(event -> event.getRowValue().setBatchCode(event.getNewValue()));
+            batchCol.setPrefWidth(90);
+
+            javafx.scene.control.TableColumn<ReceptionNoteLine, LocalDate> expiryCol = new javafx.scene.control.TableColumn<>("Expirare");
+            expiryCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("expiryDate"));
+            expiryCol.setCellFactory(col -> new javafx.scene.control.cell.TextFieldTableCell<>(
+                new javafx.util.converter.LocalDateStringConverter(
+                    DateTimeFormatter.ofPattern("dd.MM.yyyy"),
+                    DateTimeFormatter.ofPattern("dd.MM.yyyy")
+                )
+            ));
+            expiryCol.setOnEditCommit(event -> event.getRowValue().setExpiryDate(event.getNewValue()));
+            expiryCol.setPrefWidth(90);
             
             javafx.scene.control.TableColumn<ReceptionNoteLine, BigDecimal> invoicedQtyCol = new javafx.scene.control.TableColumn<>("Cant. Fact.");
             invoicedQtyCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("invoicedQuantity"));
@@ -1109,9 +1128,22 @@ public class InvoicesController {
             notesCol.setOnEditCommit(event -> event.getRowValue().setDiscrepancyNotes(event.getNewValue()));
             notesCol.setPrefWidth(120);
             
-            linesTable.getColumns().addAll(productCol, codeCol, unitCol, invoicedQtyCol, receivedQtyCol, 
-                                          diffCol, unitPriceCol, vatRateCol, valueNoVatCol, vatAmountCol, 
-                                          totalCol, markupCol, salePriceCol, notesCol);
+            linesTable.getColumns().add(productCol);
+            linesTable.getColumns().add(codeCol);
+            linesTable.getColumns().add(unitCol);
+            linesTable.getColumns().add(batchCol);
+            linesTable.getColumns().add(expiryCol);
+            linesTable.getColumns().add(invoicedQtyCol);
+            linesTable.getColumns().add(receivedQtyCol);
+            linesTable.getColumns().add(diffCol);
+            linesTable.getColumns().add(unitPriceCol);
+            linesTable.getColumns().add(vatRateCol);
+            linesTable.getColumns().add(valueNoVatCol);
+            linesTable.getColumns().add(vatAmountCol);
+            linesTable.getColumns().add(totalCol);
+            linesTable.getColumns().add(markupCol);
+            linesTable.getColumns().add(salePriceCol);
+            linesTable.getColumns().add(notesCol);
             
             // Initial totals
             updateTotals.run();
@@ -1211,6 +1243,7 @@ public class InvoicesController {
         }
     }
     
+    @SuppressWarnings("unused")
     private void viewReceptionNote(ReceptionNote nir) {
         // For backward compatibility, redirect to edit
         editReceptionNote(nir);

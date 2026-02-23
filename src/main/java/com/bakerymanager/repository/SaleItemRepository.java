@@ -19,6 +19,13 @@ public interface SaleItemRepository extends JpaRepository<SaleItem, Long> {
     
     @Query("SELECT si FROM SaleItem si WHERE si.sale.id = :saleId ORDER BY si.createdAt ASC")
     List<SaleItem> findItemsBySaleId(@Param("saleId") Long saleId);
+
+    @Query("SELECT si FROM SaleItem si " +
+           "JOIN FETCH si.product " +
+           "JOIN si.sale s " +
+           "WHERE s.saleDate >= :startDate AND s.saleDate <= :endDate")
+    List<SaleItem> findBySaleDateBetween(@Param("startDate") java.time.LocalDateTime startDate,
+                                         @Param("endDate") java.time.LocalDateTime endDate);
     
     @Query("SELECT si.product.name, SUM(si.quantity), SUM(si.totalPrice) " +
            "FROM SaleItem si " +

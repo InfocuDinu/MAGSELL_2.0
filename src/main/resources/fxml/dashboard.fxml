@@ -16,6 +16,15 @@
     <top>
         <VBox styleClass="header" spacing="20">
             <Label text="Dashboard - Panou de Control" styleClass="label-title"/>
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <Label text="Acțiuni rapide:"/>
+                <Button text="➕ Stoc" onAction="#addStock"/>
+                <Button text="🏭 Producție" onAction="#quickProduction"/>
+                <Button text="🧾 Vânzare" onAction="#quickSale"/>
+                <Button text="📊 Raport" onAction="#dailyReport"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Button text="❓ Ghid rapid" onAction="#showOnboarding"/>
+            </HBox>
         </VBox>
     </top>
     

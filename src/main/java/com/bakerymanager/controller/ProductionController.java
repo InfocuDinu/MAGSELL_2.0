@@ -4,6 +4,8 @@ import com.bakerymanager.entity.Product;
 import com.bakerymanager.entity.ProductionReport;
 import com.bakerymanager.entity.RecipeItem;
 import com.bakerymanager.entity.Ingredient;
+import com.bakerymanager.entity.ProductionOrder;
+import com.bakerymanager.entity.ProductionOrderLine;
 import com.bakerymanager.smartbill.production.api.ProductionFacade;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -11,7 +13,6 @@ import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.GridPane;
-import javafx.scene.layout.VBox;
 import javafx.geometry.Insets;
 import javafx.stage.FileChooser;
 import org.slf4j.Logger;
@@ -81,13 +82,43 @@ public class ProductionController {
     
     @FXML
     private TableColumn<ProductionRecord, String> historyStatusColumn;
+
+    @FXML
+    private TableView<ProductionOrder> productionOrdersTable;
+
+    @FXML
+    private TableColumn<ProductionOrder, String> orderNumberColumn;
+
+    @FXML
+    private TableColumn<ProductionOrder, String> orderDateColumn;
+
+    @FXML
+    private TableColumn<ProductionOrder, String> orderStatusColumn;
+
+    @FXML
+    private TableView<ProductionOrderLine> productionOrderLinesTable;
+
+    @FXML
+    private TableColumn<ProductionOrderLine, String> orderLineProductColumn;
+
+    @FXML
+    private TableColumn<ProductionOrderLine, BigDecimal> orderLinePlannedQtyColumn;
+
+    @FXML
+    private TableColumn<ProductionOrderLine, BigDecimal> orderLineActualQtyColumn;
+
+    @FXML
+    private TableColumn<ProductionOrderLine, String> orderLineUnitColumn;
     
     @FXML
     private Label productionInfoLabel;
     
     private ObservableList<RecipeItem> recipeItems = FXCollections.observableArrayList();
     private ObservableList<ProductionRecord> productionHistory = FXCollections.observableArrayList();
+    private ObservableList<ProductionOrder> productionOrders = FXCollections.observableArrayList();
+    private ObservableList<ProductionOrderLine> productionOrderLines = FXCollections.observableArrayList();
     private Product selectedProduct;
+    private ProductionOrder selectedProductionOrder;
     
     public static class ProductionRecord {
         private LocalDateTime date;
@@ -130,8 +161,11 @@ public class ProductionController {
         setupProductComboBox();
         setupRecipeTable();
         setupProductionHistoryTable();
+        setupProductionOrdersTable();
+        setupProductionOrderLinesTable();
         loadProducts();
         loadProductionHistory();
+        loadProductionOrders();
         logger.info("Production controller initialized");
     }
     
@@ -256,6 +290,43 @@ public class ProductionController {
         
         productionHistoryTable.setItems(productionHistory);
     }
+
+    private void setupProductionOrdersTable() {
+        if (productionOrdersTable == null) {
+            return;
+        }
+
+        orderNumberColumn.setCellValueFactory(new PropertyValueFactory<>("orderNumber"));
+        orderDateColumn.setCellValueFactory(param -> new javafx.beans.property.SimpleStringProperty(
+            param.getValue().getPlannedDate() != null
+                ? param.getValue().getPlannedDate().format(DateTimeFormatter.ofPattern("dd.MM.yyyy"))
+                : ""
+        ));
+        orderStatusColumn.setCellValueFactory(param -> new javafx.beans.property.SimpleStringProperty(
+            param.getValue().getStatus() != null ? param.getValue().getStatus().getDisplayName() : ""
+        ));
+
+        productionOrdersTable.setItems(productionOrders);
+        productionOrdersTable.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
+            selectedProductionOrder = newVal;
+            loadProductionOrderLines();
+        });
+    }
+
+    private void setupProductionOrderLinesTable() {
+        if (productionOrderLinesTable == null) {
+            return;
+        }
+
+        orderLineProductColumn.setCellValueFactory(param -> new javafx.beans.property.SimpleStringProperty(
+            param.getValue().getProduct() != null ? param.getValue().getProduct().getName() : ""
+        ));
+        orderLinePlannedQtyColumn.setCellValueFactory(new PropertyValueFactory<>("plannedQuantity"));
+        orderLineActualQtyColumn.setCellValueFactory(new PropertyValueFactory<>("actualQuantity"));
+        orderLineUnitColumn.setCellValueFactory(new PropertyValueFactory<>("unit"));
+
+        productionOrderLinesTable.setItems(productionOrderLines);
+    }
     
     private void loadProducts() {
         List<Product> products = productionFacade.getActiveProducts();
@@ -308,6 +379,11 @@ public class ProductionController {
     public void loadProductionHistory() {
         refreshProductionHistory();
         productionStatusLabel.setText("Istoric actualizat");
+    }
+
+    @FXML
+    public void refreshProductionOrders() {
+        loadProductionOrders();
     }
     
     @FXML
@@ -389,7 +465,9 @@ public class ProductionController {
         });
         unitCol.setPrefWidth(80);
         
-        ingredientsTable.getColumns().addAll(nameCol, quantityCol, unitCol);
+        ingredientsTable.getColumns().add(nameCol);
+        ingredientsTable.getColumns().add(quantityCol);
+        ingredientsTable.getColumns().add(unitCol);
         
         // Buton pentru adăugat ingredient
         Button addIngredientBtn = new Button("Adaugă Ingredient");
@@ -842,6 +920,168 @@ public class ProductionController {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.show();
+    }
+
+    private void loadProductionOrders() {
+        try {
+            productionOrders.clear();
+            List<ProductionOrder> orders = productionFacade.getProductionOrders(LocalDate.now().minusDays(7), LocalDate.now().plusDays(7));
+            productionOrders.addAll(orders);
+            if (!orders.isEmpty()) {
+                productionOrdersTable.getSelectionModel().select(0);
+            }
+        } catch (Exception e) {
+            logger.error("Error loading production orders", e);
+            showError("Eroare la încărcarea ordinelor: " + e.getMessage());
+        }
+    }
+
+    private void loadProductionOrderLines() {
+        productionOrderLines.clear();
+        if (selectedProductionOrder == null) {
+            return;
+        }
+
+        try {
+            ProductionOrder order = productionFacade.getProductionOrderWithLines(selectedProductionOrder.getId());
+            if (order.getLines() != null) {
+                productionOrderLines.addAll(order.getLines());
+            }
+        } catch (Exception e) {
+            logger.error("Error loading production order lines", e);
+            showError("Eroare la încărcarea liniilor ordinului: " + e.getMessage());
+        }
+    }
+
+    @FXML
+    public void createProductionOrder() {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Ordin Producție Nou");
+        dialog.setHeaderText("Creează ordin de producție");
+
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(20, 150, 10, 10));
+
+        DatePicker plannedDatePicker = new DatePicker(LocalDate.now());
+        TextArea notesArea = new TextArea();
+        notesArea.setPrefRowCount(3);
+
+        grid.add(new Label("Data planificată:"), 0, 0);
+        grid.add(plannedDatePicker, 1, 0);
+        grid.add(new Label("Observații:"), 0, 1);
+        grid.add(notesArea, 1, 1);
+
+        dialog.getDialogPane().setContent(grid);
+
+        dialog.showAndWait().ifPresent(response -> {
+            if (response == ButtonType.OK) {
+                try {
+                    ProductionOrder order = productionFacade.createProductionOrder(plannedDatePicker.getValue(), notesArea.getText());
+                    loadProductionOrders();
+                    productionOrdersTable.getSelectionModel().select(order);
+                    showSuccessMessage("Ordin creat: " + order.getOrderNumber());
+                } catch (Exception e) {
+                    showError("Eroare la creare ordin: " + e.getMessage());
+                }
+            }
+        });
+    }
+
+    @FXML
+    public void addProductionOrderLine() {
+        if (selectedProductionOrder == null) {
+            showError("Selectați un ordin de producție!");
+            return;
+        }
+
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Adaugă Linie Ordin");
+        dialog.setHeaderText("Adaugă produs în ordin");
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(20, 150, 10, 10));
+
+        ComboBox<Product> productCombo = new ComboBox<>(FXCollections.observableArrayList(productionFacade.getActiveProducts()));
+        productCombo.setConverter(new javafx.util.StringConverter<>() {
+            @Override
+            public String toString(Product product) {
+                return product != null ? product.getName() : "";
+            }
+
+            @Override
+            public Product fromString(String string) {
+                return productionFacade.getActiveProducts().stream()
+                    .filter(p -> p.getName().equals(string))
+                    .findFirst()
+                    .orElse(null);
+            }
+        });
+
+        TextField quantityField = new TextField();
+        quantityField.setPromptText("Cantitate planificată");
+
+        grid.add(new Label("Produs:"), 0, 0);
+        grid.add(productCombo, 1, 0);
+        grid.add(new Label("Cantitate:"), 0, 1);
+        grid.add(quantityField, 1, 1);
+
+        dialog.getDialogPane().setContent(grid);
+
+        dialog.showAndWait().ifPresent(response -> {
+            if (response == ButtonType.OK) {
+                try {
+                    Product product = productCombo.getValue();
+                    if (product == null) {
+                        showError("Selectați un produs!");
+                        return;
+                    }
+                    BigDecimal qty = new BigDecimal(quantityField.getText().trim());
+                    productionFacade.addProductionOrderLine(selectedProductionOrder.getId(), product.getId(), qty);
+                    loadProductionOrderLines();
+                    showSuccessMessage("Linie adăugată în ordin");
+                } catch (Exception e) {
+                    showError("Eroare la adăugare linie: " + e.getMessage());
+                }
+            }
+        });
+    }
+
+    @FXML
+    public void startProductionOrder() {
+        if (selectedProductionOrder == null) {
+            showError("Selectați un ordin de producție!");
+            return;
+        }
+        try {
+            productionFacade.startProductionOrder(selectedProductionOrder.getId());
+            loadProductionOrders();
+            showSuccessMessage("Ordin pornit");
+        } catch (Exception e) {
+            showError("Eroare la pornire ordin: " + e.getMessage());
+        }
+    }
+
+    @FXML
+    public void completeProductionOrder() {
+        if (selectedProductionOrder == null) {
+            showError("Selectați un ordin de producție!");
+            return;
+        }
+        try {
+            productionFacade.completeProductionOrder(selectedProductionOrder.getId());
+            loadProductionOrders();
+            loadProductionHistory();
+            showSuccessMessage("Ordin finalizat");
+        } catch (Exception e) {
+            showError("Eroare la finalizare ordin: " + e.getMessage());
+        }
     }
     
     @FXML

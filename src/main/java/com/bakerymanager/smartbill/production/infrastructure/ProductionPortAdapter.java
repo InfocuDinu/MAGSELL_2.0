@@ -4,6 +4,7 @@ import com.bakerymanager.entity.Ingredient;
 import com.bakerymanager.entity.Product;
 import com.bakerymanager.entity.ProductionReport;
 import com.bakerymanager.entity.RecipeItem;
+import com.bakerymanager.entity.ProductionOrder;
 import com.bakerymanager.service.IngredientService;
 import com.bakerymanager.service.PdfService;
 import com.bakerymanager.service.ProductService;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -105,5 +107,35 @@ public class ProductionPortAdapter implements ProductionPort {
     @Override
     public void exportProductionReportPdf(ProductionReport report, String filePath) throws IOException, DocumentException {
         pdfService.generateProductionReportPdf(report, filePath);
+    }
+
+    @Override
+    public ProductionOrder createProductionOrder(LocalDate plannedDate, String notes) {
+        return productionService.createProductionOrder(plannedDate, notes);
+    }
+
+    @Override
+    public ProductionOrder addProductionOrderLine(Long productionOrderId, Long productId, BigDecimal plannedQuantity) {
+        return productionService.addProductionOrderLine(productionOrderId, productId, plannedQuantity);
+    }
+
+    @Override
+    public List<ProductionOrder> getProductionOrders(LocalDate startDate, LocalDate endDate) {
+        return productionService.getProductionOrders(startDate, endDate);
+    }
+
+    @Override
+    public ProductionOrder getProductionOrderWithLines(Long productionOrderId) {
+        return productionService.getProductionOrderWithLines(productionOrderId);
+    }
+
+    @Override
+    public ProductionOrder startProductionOrder(Long productionOrderId) {
+        return productionService.startProductionOrder(productionOrderId);
+    }
+
+    @Override
+    public ProductionOrder completeProductionOrder(Long productionOrderId) {
+        return productionService.completeProductionOrder(productionOrderId);
     }
 }

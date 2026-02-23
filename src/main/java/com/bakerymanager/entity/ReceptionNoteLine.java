@@ -3,6 +3,7 @@ package com.bakerymanager.entity;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 
 /**
  * ReceptionNoteLine - Individual line item in a Reception Note (NIR)
@@ -18,6 +19,10 @@ public class ReceptionNoteLine {
     @ManyToOne
     @JoinColumn(name = "reception_note_id", nullable = false)
     private ReceptionNote receptionNote;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ingredient_id")
+    private Ingredient ingredient;
     
     // Product Information
     @Column(name = "product_name", nullable = false)
@@ -28,6 +33,13 @@ public class ReceptionNoteLine {
     
     @Column(name = "unit", nullable = false)
     private String unit; // UM (unitate de măsură): buc, kg, L, etc.
+
+    // Batch/Lot tracking
+    @Column(name = "batch_code")
+    private String batchCode;
+
+    @Column(name = "expiry_date")
+    private LocalDate expiryDate;
     
     // Quantities
     @Column(name = "invoiced_quantity", precision = 10, scale = 3, nullable = false)
@@ -142,6 +154,14 @@ public class ReceptionNoteLine {
     public void setReceptionNote(ReceptionNote receptionNote) {
         this.receptionNote = receptionNote;
     }
+
+    public Ingredient getIngredient() {
+        return ingredient;
+    }
+
+    public void setIngredient(Ingredient ingredient) {
+        this.ingredient = ingredient;
+    }
     
     public String getProductName() {
         return productName;
@@ -165,6 +185,22 @@ public class ReceptionNoteLine {
     
     public void setUnit(String unit) {
         this.unit = unit;
+    }
+
+    public String getBatchCode() {
+        return batchCode;
+    }
+
+    public void setBatchCode(String batchCode) {
+        this.batchCode = batchCode;
+    }
+
+    public LocalDate getExpiryDate() {
+        return expiryDate;
+    }
+
+    public void setExpiryDate(LocalDate expiryDate) {
+        this.expiryDate = expiryDate;
     }
     
     public BigDecimal getInvoicedQuantity() {

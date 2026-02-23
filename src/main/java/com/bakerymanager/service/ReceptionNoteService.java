@@ -2,7 +2,6 @@ package com.bakerymanager.service;
 
 import com.bakerymanager.entity.*;
 import com.bakerymanager.repository.ReceptionNoteRepository;
-import com.bakerymanager.repository.ReceptionNoteLineRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -19,15 +18,21 @@ public class ReceptionNoteService {
     private static final Logger logger = LoggerFactory.getLogger(ReceptionNoteService.class);
     
     private final ReceptionNoteRepository receptionNoteRepository;
-    private final ReceptionNoteLineRepository receptionNoteLineRepository;
     private final InvoiceService invoiceService;
+    private final IngredientService ingredientService;
+    private final StockService stockService;
+    private final UnitConversionService unitConversionService;
     
     public ReceptionNoteService(ReceptionNoteRepository receptionNoteRepository,
-                               ReceptionNoteLineRepository receptionNoteLineRepository,
-                               InvoiceService invoiceService) {
+                               InvoiceService invoiceService,
+                               IngredientService ingredientService,
+                               StockService stockService,
+                               UnitConversionService unitConversionService) {
         this.receptionNoteRepository = receptionNoteRepository;
-        this.receptionNoteLineRepository = receptionNoteLineRepository;
         this.invoiceService = invoiceService;
+        this.ingredientService = ingredientService;
+        this.stockService = stockService;
+        this.unitConversionService = unitConversionService;
     }
     
     /**
@@ -54,6 +59,7 @@ public class ReceptionNoteService {
             nirLine.setProductName(invoiceLine.getIngredient().getName());
             nirLine.setProductCode(null); // Can be set later
             nirLine.setUnit(invoiceLine.getIngredient().getUnitOfMeasure().name());
+            nirLine.setIngredient(invoiceLine.getIngredient());
             nirLine.setInvoicedQuantity(invoiceLine.getQuantity());
             nirLine.setReceivedQuantity(invoiceLine.getQuantity()); // Default: same as invoiced
             nirLine.setUnitPrice(invoiceLine.getUnitPrice());
@@ -81,6 +87,10 @@ public class ReceptionNoteService {
         receptionNote.calculateTotals();
         receptionNote.checkDiscrepancies();
         ReceptionNote saved = receptionNoteRepository.save(receptionNote);
+        if (saved.getStatus() == ReceptionNote.NirStatus.SIGNED && !Boolean.TRUE.equals(saved.getPostedToStock())) {
+            postToStock(saved);
+            saved = receptionNoteRepository.save(saved);
+        }
         logger.info("Saved reception note: {}", saved.getNirNumber());
         return saved;
     }
@@ -184,11 +194,91 @@ public class ReceptionNoteService {
         
         nirNote.setWarehouseManagerName(warehouseManager);
         nirNote.setStatus(ReceptionNote.NirStatus.SIGNED);
-        
         ReceptionNote saved = receptionNoteRepository.save(nirNote);
+        if (!Boolean.TRUE.equals(saved.getPostedToStock())) {
+            postToStock(saved);
+            saved = receptionNoteRepository.save(saved);
+        }
         logger.info("Signed reception note: {}", saved.getNirNumber());
         
         return saved;
+    }
+
+    private void postToStock(ReceptionNote receptionNote) {
+        if (receptionNote.getLines() == null || receptionNote.getLines().isEmpty()) {
+            logger.warn("No lines found for reception note {}. Skipping stock posting.", receptionNote.getNirNumber());
+            return;
+        }
+
+        for (ReceptionNoteLine line : receptionNote.getLines()) {
+            if (line.getReceivedQuantity() == null || line.getReceivedQuantity().compareTo(BigDecimal.ZERO) <= 0) {
+                continue;
+            }
+
+            Ingredient ingredient = resolveIngredient(line);
+            if (ingredient == null) {
+                logger.warn("No ingredient found for line '{}' in NIR {}", line.getProductName(), receptionNote.getNirNumber());
+                continue;
+            }
+
+            line.setIngredient(ingredient);
+
+            if (line.getUnitPrice() != null) {
+                ingredientService.updatePurchasePrice(ingredient.getId(), line.getUnitPrice());
+            }
+
+            String targetUnit = ingredient.getUnitOfMeasure() != null ? ingredient.getUnitOfMeasure().name() : line.getUnit();
+            BigDecimal normalizedQty = unitConversionService.convert(line.getReceivedQuantity(), line.getUnit(), targetUnit);
+
+            ingredientService.addStock(ingredient.getId(), normalizedQty);
+
+            stockService.receiveBatch(
+                ingredient,
+                normalizedQty,
+                targetUnit,
+                line.getExpiryDate(),
+                receptionNote.getReceptionDate(),
+                line.getBatchCode(),
+                "RECEPTION_NOTE",
+                receptionNote.getId()
+            );
+        }
+
+        receptionNote.setPostedToStock(true);
+        receptionNote.setPostedAt(LocalDateTime.now());
+    }
+
+    private Ingredient resolveIngredient(ReceptionNoteLine line) {
+        if (line.getIngredient() != null) {
+            return line.getIngredient();
+        }
+
+        if (line.getProductName() == null || line.getProductName().isBlank()) {
+            return null;
+        }
+
+        return ingredientService.getIngredientByName(line.getProductName())
+            .or(() -> ingredientService.findByNameContainingIgnoreCase(line.getProductName()).stream().findFirst())
+            .orElseGet(() -> {
+                Ingredient.UnitOfMeasure unit = parseUnitOfMeasure(line.getUnit());
+                return ingredientService.createIngredient(
+                    line.getProductName(),
+                    unit,
+                    BigDecimal.ZERO,
+                    line.getUnitPrice()
+                );
+            });
+    }
+
+    private Ingredient.UnitOfMeasure parseUnitOfMeasure(String unit) {
+        if (unit == null || unit.isBlank()) {
+            return Ingredient.UnitOfMeasure.BUC;
+        }
+        try {
+            return Ingredient.UnitOfMeasure.valueOf(unit.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            return Ingredient.UnitOfMeasure.BUC;
+        }
     }
     
     /**

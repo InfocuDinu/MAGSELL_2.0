@@ -2,6 +2,8 @@ package com.bakerymanager.controller;
 
 import com.bakerymanager.service.IngredientService;
 import com.bakerymanager.service.ProductService;
+import com.bakerymanager.service.AlertService;
+import com.bakerymanager.service.Alert;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -14,6 +16,7 @@ import org.springframework.stereotype.Controller;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.prefs.Preferences;
 
 @Controller
 public class DashboardController {
@@ -22,10 +25,14 @@ public class DashboardController {
     
     private final ProductService productService;
     private final IngredientService ingredientService;
+    private final AlertService alertService;
     
-    public DashboardController(ProductService productService, IngredientService ingredientService) {
+    public DashboardController(ProductService productService,
+                               IngredientService ingredientService,
+                               AlertService alertService) {
         this.productService = productService;
         this.ingredientService = ingredientService;
+        this.alertService = alertService;
     }
     
     @FXML
@@ -90,6 +97,7 @@ public class DashboardController {
     public void initialize() {
         setupActivityTable();
         loadDashboardData();
+        showOnboardingIfFirstRun();
         logger.info("Dashboard controller initialized");
     }
     
@@ -120,6 +128,8 @@ public class DashboardController {
                 "Dashboard încărcat",
                 "Admin"
             ));
+
+            loadAlerts();
             
             logger.info("Dashboard data loaded successfully");
         } catch (Exception e) {
@@ -170,5 +180,54 @@ public class DashboardController {
             "Raport zilnic generat",
             "Admin"
         ));
+    }
+
+    @FXML
+    public void showOnboarding() {
+        javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.INFORMATION);
+        alert.setTitle("Ghid rapid");
+        alert.setHeaderText("Bun venit! Iată pașii de bază:");
+        alert.setContentText(
+            "1) Încarcă produse și rețete în modulul Producție.\n" +
+            "2) Generează NIR și completează lot/expirare.\n" +
+            "3) Rulează producția sau ordinele de producție.\n" +
+            "4) Vânzări în POS + bon fiscal.\n" +
+            "5) Verifică rapoarte și alerte zilnic.\n"
+        );
+        alert.getDialogPane().setPrefWidth(480);
+        alert.show();
+    }
+
+    private void showOnboardingIfFirstRun() {
+        try {
+            Preferences prefs = Preferences.userNodeForPackage(DashboardController.class);
+            boolean shown = prefs.getBoolean("onboardingShown", false);
+            if (!shown) {
+                showOnboarding();
+                prefs.putBoolean("onboardingShown", true);
+            }
+        } catch (Exception e) {
+            logger.warn("Unable to load onboarding preference", e);
+        }
+    }
+
+    private void loadAlerts() {
+        try {
+            var alerts = alertService.getAlerts(LocalDateTime.now().toLocalDate().minusDays(7), LocalDateTime.now().toLocalDate());
+            if (!alerts.isEmpty()) {
+                statusLabel.setText("Alerte active: " + alerts.size());
+            }
+
+            for (Alert alert : alerts) {
+                activityRecords.add(0, new ActivityRecord(
+                    alert.getTimestamp(),
+                    "Alert - " + alert.getSeverity().name(),
+                    alert.getMessage(),
+                    "System"
+                ));
+            }
+        } catch (Exception e) {
+            logger.warn("Error loading alerts", e);
+        }
     }
 }

@@ -21,6 +21,9 @@ public class RecipeItem {
     
     @Column(name = "required_quantity", nullable = false, precision = 10, scale = 3)
     private BigDecimal requiredQuantity;
+
+    @Column(name = "unit", length = 20)
+    private String unit;
     
     @PrePersist
     protected void onCreate() {
@@ -45,6 +48,9 @@ public class RecipeItem {
     
     public BigDecimal getRequiredQuantity() { return requiredQuantity; }
     public void setRequiredQuantity(BigDecimal requiredQuantity) { this.requiredQuantity = requiredQuantity; }
+
+    public String getUnit() { return unit; }
+    public void setUnit(String unit) { this.unit = unit; }
     
     public Long getIngredientId() { 
         return ingredient != null ? ingredient.getId() : null; 

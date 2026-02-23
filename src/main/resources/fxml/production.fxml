@@ -39,45 +39,88 @@
     </top>
     
     <center>
-        <SplitPane dividerPositions="0.5" orientation="HORIZONTAL">
-            <!-- Recipe Management -->
-            <VBox spacing="10">
-                <HBox alignment="CENTER_LEFT" spacing="10">
-                    <Label text="Rețetar Produs"/>
-                    <Region HBox.hgrow="ALWAYS"/>
-                    <Button text="➕ Adaugă Ingredient" onAction="#addRecipeItem"/>
-                    <Button text="📄 Rețetă Nouă" onAction="#createNewRecipe"/>
-                </HBox>
-                
-                <TableView fx:id="recipeTable" VBox.vgrow="ALWAYS">
-                    <columns>
-                        <TableColumn fx:id="recipeIngredientColumn" text="Ingredient" prefWidth="150"/>
-                        <TableColumn fx:id="recipeQuantityColumn" text="Cantitate Necesară" prefWidth="120"/>
-                        <TableColumn fx:id="recipeUnitColumn" text="Unitate" prefWidth="80"/>
-                        <TableColumn fx:id="recipeAvailableColumn" text="Stoc Disponibil" prefWidth="120"/>
-                        <TableColumn fx:id="recipeActionsColumn" text="Acțiuni" prefWidth="100"/>
-                    </columns>
-                </TableView>
-            </VBox>
-            
-            <!-- Production History -->
-            <VBox spacing="10">
-                <HBox alignment="CENTER_LEFT" spacing="10">
-                    <Label text="Istoric Producție"/>
-                    <Region HBox.hgrow="ALWAYS"/>
-                    <Button text="🔄 Reîncarcă" onAction="#loadProductionHistory"/>
-                </HBox>
-                
-                <TableView fx:id="productionHistoryTable" VBox.vgrow="ALWAYS">
-                    <columns>
-                        <TableColumn fx:id="historyDateColumn" text="Data" prefWidth="120"/>
-                        <TableColumn fx:id="historyProductColumn" text="Produs" prefWidth="150"/>
-                        <TableColumn fx:id="historyQuantityColumn" text="Cantitate" prefWidth="100"/>
-                        <TableColumn fx:id="historyStatusColumn" text="Status" prefWidth="100"/>
-                    </columns>
-                </TableView>
-            </VBox>
-        </SplitPane>
+        <TabPane tabClosingPolicy="UNAVAILABLE">
+            <tabs>
+                <Tab text="Producție rapidă">
+                    <SplitPane dividerPositions="0.5" orientation="HORIZONTAL">
+                        <!-- Recipe Management -->
+                        <VBox spacing="10">
+                            <HBox alignment="CENTER_LEFT" spacing="10">
+                                <Label text="Rețetar Produs"/>
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <Button text="➕ Adaugă Ingredient" onAction="#addRecipeItem"/>
+                                <Button text="📄 Rețetă Nouă" onAction="#createNewRecipe"/>
+                            </HBox>
+                            
+                            <TableView fx:id="recipeTable" VBox.vgrow="ALWAYS">
+                                <columns>
+                                    <TableColumn fx:id="recipeIngredientColumn" text="Ingredient" prefWidth="150"/>
+                                    <TableColumn fx:id="recipeQuantityColumn" text="Cantitate Necesară" prefWidth="120"/>
+                                    <TableColumn fx:id="recipeUnitColumn" text="Unitate" prefWidth="80"/>
+                                    <TableColumn fx:id="recipeAvailableColumn" text="Stoc Disponibil" prefWidth="120"/>
+                                    <TableColumn fx:id="recipeActionsColumn" text="Acțiuni" prefWidth="100"/>
+                                </columns>
+                            </TableView>
+                        </VBox>
+                        
+                        <!-- Production History -->
+                        <VBox spacing="10">
+                            <HBox alignment="CENTER_LEFT" spacing="10">
+                                <Label text="Istoric Producție"/>
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <Button text="🔄 Reîncarcă" onAction="#loadProductionHistory"/>
+                            </HBox>
+                            
+                            <TableView fx:id="productionHistoryTable" VBox.vgrow="ALWAYS">
+                                <columns>
+                                    <TableColumn fx:id="historyDateColumn" text="Data" prefWidth="120"/>
+                                    <TableColumn fx:id="historyProductColumn" text="Produs" prefWidth="150"/>
+                                    <TableColumn fx:id="historyQuantityColumn" text="Cantitate" prefWidth="100"/>
+                                    <TableColumn fx:id="historyStatusColumn" text="Status" prefWidth="100"/>
+                                </columns>
+                            </TableView>
+                        </VBox>
+                    </SplitPane>
+                </Tab>
+                <Tab text="Ordine producție">
+                    <VBox spacing="10">
+                        <HBox alignment="CENTER_LEFT" spacing="10">
+                            <Label text="Ordine de producție"/>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Button text="➕ Ordin Nou" onAction="#createProductionOrder"/>
+                            <Button text="➕ Linie Ordin" onAction="#addProductionOrderLine"/>
+                            <Button text="▶ Start" onAction="#startProductionOrder"/>
+                            <Button text="✅ Finalizează" onAction="#completeProductionOrder"/>
+                            <Button text="🔄 Reîncarcă" onAction="#refreshProductionOrders"/>
+                        </HBox>
+                        
+                        <SplitPane dividerPositions="0.5" orientation="HORIZONTAL">
+                            <VBox spacing="10">
+                                <Label text="Lista ordine"/>
+                                <TableView fx:id="productionOrdersTable" VBox.vgrow="ALWAYS">
+                                    <columns>
+                                        <TableColumn fx:id="orderNumberColumn" text="Număr" prefWidth="160"/>
+                                        <TableColumn fx:id="orderDateColumn" text="Data" prefWidth="120"/>
+                                        <TableColumn fx:id="orderStatusColumn" text="Status" prefWidth="120"/>
+                                    </columns>
+                                </TableView>
+                            </VBox>
+                            <VBox spacing="10">
+                                <Label text="Linii ordin"/>
+                                <TableView fx:id="productionOrderLinesTable" VBox.vgrow="ALWAYS">
+                                    <columns>
+                                        <TableColumn fx:id="orderLineProductColumn" text="Produs" prefWidth="180"/>
+                                        <TableColumn fx:id="orderLinePlannedQtyColumn" text="Cantitate plan" prefWidth="120"/>
+                                        <TableColumn fx:id="orderLineActualQtyColumn" text="Cantitate real" prefWidth="120"/>
+                                        <TableColumn fx:id="orderLineUnitColumn" text="Unitate" prefWidth="80"/>
+                                    </columns>
+                                </TableView>
+                            </VBox>
+                        </SplitPane>
+                    </VBox>
+                </Tab>
+            </tabs>
+        </TabPane>
     </center>
     
     <bottom>

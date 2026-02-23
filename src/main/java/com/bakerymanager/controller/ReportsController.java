@@ -1,6 +1,18 @@
 package com.bakerymanager.controller;
 
 import com.bakerymanager.smartbill.reports.api.ReportingFacade;
+import com.bakerymanager.entity.SaleItem;
+import com.bakerymanager.entity.RecipeItem;
+import com.bakerymanager.entity.Product;
+import com.bakerymanager.service.AlertService;
+import com.bakerymanager.service.Alert;
+import com.bakerymanager.service.CustomerService;
+import com.bakerymanager.service.CustomOrderService;
+import com.bakerymanager.service.ForecastService;
+import com.bakerymanager.service.AccountingExportService;
+import com.bakerymanager.service.UnitConversionService;
+import com.bakerymanager.entity.Customer;
+import com.bakerymanager.entity.CustomOrder;
 import com.lowagie.text.Document;
 import com.lowagie.text.Element;
 import com.lowagie.text.Font;
@@ -21,9 +33,13 @@ import org.springframework.stereotype.Controller;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Controller
 public class ReportsController {
@@ -31,9 +47,27 @@ public class ReportsController {
     private static final Logger logger = LoggerFactory.getLogger(ReportsController.class);
     
     private final ReportingFacade reportingFacade;
+    private final AlertService alertService;
+    private final CustomerService customerService;
+    private final CustomOrderService customOrderService;
+    private final ForecastService forecastService;
+    private final AccountingExportService accountingExportService;
+    private final UnitConversionService unitConversionService;
     
-    public ReportsController(ReportingFacade reportingFacade) {
+    public ReportsController(ReportingFacade reportingFacade,
+                             AlertService alertService,
+                             CustomerService customerService,
+                             CustomOrderService customOrderService,
+                             ForecastService forecastService,
+                             AccountingExportService accountingExportService,
+                             UnitConversionService unitConversionService) {
         this.reportingFacade = reportingFacade;
+        this.alertService = alertService;
+        this.customerService = customerService;
+        this.customOrderService = customOrderService;
+        this.forecastService = forecastService;
+        this.accountingExportService = accountingExportService;
+        this.unitConversionService = unitConversionService;
     }
     
     @FXML
@@ -60,6 +94,14 @@ public class ReportsController {
     private void setupReportTypes() {
         reportTypeCombo.getItems().addAll(
             "Raport Stocuri",
+            "Raport Loturi Expirare",
+            "Raport Mișcări Stoc",
+            "Raport Consum Standard vs Real",
+            "Raport Alertare Inteligentă",
+            "Raport Precomenzi",
+            "Raport Loyalty",
+            "Raport Forecast Cerere",
+            "Export Contabil CSV",
             "Raport Vânzări",
             "Raport Producție",
             "Raport Costuri",
@@ -80,6 +122,30 @@ public class ReportsController {
         switch (reportType) {
             case "Raport Stocuri":
                 generateStockReport(report);
+                break;
+            case "Raport Loturi Expirare":
+                generateExpiringBatchesReport(report, startDate, endDate);
+                break;
+            case "Raport Mișcări Stoc":
+                generateStockMovementsReport(report, startDate, endDate);
+                break;
+            case "Raport Consum Standard vs Real":
+                generateConsumptionVarianceReport(report, startDate, endDate);
+                break;
+            case "Raport Alertare Inteligentă":
+                generateAlertingReport(report, startDate, endDate);
+                break;
+            case "Raport Precomenzi":
+                generatePreordersReport(report, startDate, endDate);
+                break;
+            case "Raport Loyalty":
+                generateLoyaltyReport(report);
+                break;
+            case "Raport Forecast Cerere":
+                generateForecastReport(report, startDate, endDate);
+                break;
+            case "Export Contabil CSV":
+                generateAccountingExportInfo(report, startDate, endDate);
                 break;
             case "Raport Vânzări":
                 generateSalesReport(report, startDate, endDate);
@@ -133,6 +199,198 @@ public class ReportsController {
                 ingredient.getUnitOfMeasure().getDisplayName(),
                 ingredient.getMinimumStock()));
         });
+    }
+
+    private void generateExpiringBatchesReport(StringBuilder report, LocalDate startDate, LocalDate endDate) {
+        LocalDate start = startDate != null ? startDate : LocalDate.now();
+        LocalDate end = endDate != null ? endDate : start.plusDays(30);
+
+        report.append("=== RAPORT LOTURI CU EXPIRARE ===\n");
+        report.append("Perioada: ")
+            .append(start.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")))
+            .append(" - ")
+            .append(end.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")))
+            .append("\n\n");
+
+        reportingFacade.getExpiringBatches(start, end).forEach(batch -> {
+            String ingredientName = batch.getIngredient() != null ? batch.getIngredient().getName() : "";
+            String expiry = batch.getExpiryDate() != null
+                ? batch.getExpiryDate().format(DateTimeFormatter.ofPattern("dd.MM.yyyy"))
+                : "N/A";
+
+            report.append(String.format("%-25s Lot:%-10s Exp:%-12s Qty:%8.3f\n",
+                ingredientName,
+                batch.getBatchCode() != null ? batch.getBatchCode() : "-",
+                expiry,
+                batch.getQuantity() != null ? batch.getQuantity() : BigDecimal.ZERO
+            ));
+        });
+    }
+
+    private void generateStockMovementsReport(StringBuilder report, LocalDate startDate, LocalDate endDate) {
+        LocalDateTime start = startDate != null ? startDate.atStartOfDay() : LocalDate.now().minusDays(7).atStartOfDay();
+        LocalDateTime end = endDate != null ? endDate.plusDays(1).atStartOfDay().minusSeconds(1) : LocalDateTime.now();
+
+        report.append("=== RAPORT MIȘCĂRI STOC ===\n");
+        report.append("Perioada: ")
+            .append(start.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")))
+            .append(" - ")
+            .append(end.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")))
+            .append("\n\n");
+
+        reportingFacade.getStockMovements(start, end).forEach(movement -> {
+            String ingredientName = movement.getIngredient() != null ? movement.getIngredient().getName() : "";
+            String dateStr = movement.getMovementDate() != null
+                ? movement.getMovementDate().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"))
+                : "";
+            String batch = movement.getBatch() != null ? movement.getBatch().getBatchCode() : "-";
+
+            report.append(String.format("%s | %-20s | %-10s | %8.3f %s | Lot:%s\n",
+                dateStr,
+                ingredientName,
+                movement.getMovementType(),
+                movement.getQuantity() != null ? movement.getQuantity() : BigDecimal.ZERO,
+                movement.getUnit() != null ? movement.getUnit() : "",
+                batch
+            ));
+        });
+    }
+
+    private void generateConsumptionVarianceReport(StringBuilder report, LocalDate startDate, LocalDate endDate) {
+        LocalDate start = startDate != null ? startDate : LocalDate.now().minusDays(7);
+        LocalDate end = endDate != null ? endDate : LocalDate.now();
+
+        report.append("=== RAPORT CONSUM STANDARD VS REAL ===\n");
+        report.append("Perioada: ")
+            .append(start.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")))
+            .append(" - ")
+            .append(end.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")))
+            .append("\n\n");
+
+        reportingFacade.getProductionConsumptions(start, end).forEach(consumption -> {
+            String ingredientName = consumption.getIngredient() != null ? consumption.getIngredient().getName() : "";
+            BigDecimal standardQty = consumption.getStandardQuantity() != null ? consumption.getStandardQuantity() : BigDecimal.ZERO;
+            BigDecimal actualQty = consumption.getActualQuantity() != null ? consumption.getActualQuantity() : BigDecimal.ZERO;
+            BigDecimal variance = actualQty.subtract(standardQty);
+            String unit = consumption.getUnit() != null ? consumption.getUnit() : "";
+
+            report.append(String.format("%-25s | Std: %8.3f | Real: %8.3f | Var: %+8.3f %s\n",
+                ingredientName,
+                standardQty,
+                actualQty,
+                variance,
+                unit
+            ));
+        });
+    }
+
+    private void generateAlertingReport(StringBuilder report, LocalDate startDate, LocalDate endDate) {
+        LocalDate start = startDate != null ? startDate : LocalDate.now().minusDays(7);
+        LocalDate end = endDate != null ? endDate : LocalDate.now();
+
+        report.append("=== RAPORT ALERTARE INTELIGENTĂ ===\n");
+        report.append("Perioada: ")
+            .append(start.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")))
+            .append(" - ")
+            .append(end.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")))
+            .append("\n\n");
+
+        List<Alert> alerts = alertService.getAlerts(start, end);
+        if (alerts.isEmpty()) {
+            report.append("Nu există alerte în perioada selectată.\n");
+            return;
+        }
+
+        for (Alert alert : alerts) {
+            report.append(String.format("[%s] %s | %s\n",
+                alert.getSeverity(),
+                alert.getType(),
+                alert.getMessage()
+            ));
+        }
+    }
+
+    private void generatePreordersReport(StringBuilder report, LocalDate startDate, LocalDate endDate) {
+        LocalDateTime start = (startDate != null ? startDate : LocalDate.now()).atStartOfDay();
+        LocalDateTime end = (endDate != null ? endDate : LocalDate.now().plusDays(7)).plusDays(1).atStartOfDay().minusSeconds(1);
+
+        report.append("=== RAPORT PRECOMENZI ===\n");
+        report.append("Perioada: ")
+            .append(start.toLocalDate().format(DateTimeFormatter.ofPattern("dd.MM.yyyy")))
+            .append(" - ")
+            .append(end.toLocalDate().format(DateTimeFormatter.ofPattern("dd.MM.yyyy")))
+            .append("\n\n");
+
+        List<CustomOrder> orders = customOrderService.getOrdersDueBetween(start, end);
+        if (orders.isEmpty()) {
+            report.append("Nu există precomenzi în interval.\n");
+            return;
+        }
+
+        for (CustomOrder order : orders) {
+            report.append(String.format("%s | %s | %s | %s | %s\n",
+                order.getCustomer() != null ? order.getCustomer().getName() : "",
+                order.getProductName(),
+                order.getQuantity(),
+                order.getDueDate() != null ? order.getDueDate().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")) : "",
+                order.getStatus()
+            ));
+        }
+    }
+
+    private void generateLoyaltyReport(StringBuilder report) {
+        report.append("=== RAPORT LOYALTY ===\n");
+        report.append("Generat la: ")
+            .append(LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")))
+            .append("\n\n");
+
+        List<Customer> topCustomers = customerService.getTopCustomers();
+        if (topCustomers.isEmpty()) {
+            report.append("Nu există clienți înregistrați.\n");
+            return;
+        }
+
+        for (Customer customer : topCustomers) {
+            report.append(String.format("%-25s | Puncte: %4d | Total: %s\n",
+                customer.getName(),
+                customer.getLoyaltyPoints(),
+                customer.getTotalPurchases()
+            ));
+        }
+    }
+
+    private void generateForecastReport(StringBuilder report, LocalDate startDate, LocalDate endDate) {
+        report.append("=== RAPORT FORECAST CERERE ===\n");
+        report.append("Perioada analizată: ")
+            .append((startDate != null ? startDate : LocalDate.now().minusDays(14)).format(DateTimeFormatter.ofPattern("dd.MM.yyyy")))
+            .append(" - ")
+            .append((endDate != null ? endDate : LocalDate.now()).format(DateTimeFormatter.ofPattern("dd.MM.yyyy")))
+            .append("\n\n");
+
+        List<ForecastService.ForecastItem> forecast = forecastService.getForecast(startDate, endDate);
+        if (forecast.isEmpty()) {
+            report.append("Nu există date suficiente pentru forecast.\n");
+            return;
+        }
+
+        for (ForecastService.ForecastItem item : forecast) {
+            report.append(String.format("%-25s | Medie/zi: %6.3f | Recomandat: %6.3f\n",
+                item.getProduct().getName(),
+                item.getAverageDaily(),
+                item.getSuggestedProduction()
+            ));
+        }
+    }
+
+    private void generateAccountingExportInfo(StringBuilder report, LocalDate startDate, LocalDate endDate) {
+        report.append("=== EXPORT CONTABIL CSV ===\n");
+        report.append("Acest raport se exportă ca fișier CSV.\n");
+        report.append("Selectați perioada și apăsați Export PDF (CSV).\n");
+        report.append("Perioada selectată: ")
+            .append(startDate != null ? startDate.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")) : "-")
+            .append(" - ")
+            .append(endDate != null ? endDate.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")) : "-")
+            .append("\n");
     }
     
     private void generateSalesReport(StringBuilder report, LocalDate startDate, LocalDate endDate) {
@@ -211,14 +469,127 @@ public class ReportsController {
     }
     
     private void generateProfitabilityReport(StringBuilder report) {
+        LocalDate startDate = startDatePicker.getValue() != null ? startDatePicker.getValue() : LocalDate.now().minusDays(7);
+        LocalDate endDate = endDatePicker.getValue() != null ? endDatePicker.getValue() : LocalDate.now();
+
+        LocalDateTime start = startDate.atStartOfDay();
+        LocalDateTime end = endDate.plusDays(1).atStartOfDay().minusSeconds(1);
+
         report.append("=== RAPORT PROFITABILITATE ===\n");
-        report.append("Generat la: ").append(LocalDate.now().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"))).append("\n\n");
-        report.append("Raportul de profitabilitate este în dezvoltare.\n");
-        report.append("Funcționalități viitoare:\n");
-        report.append("- Profit per produs\n");
-        report.append("- Marje de profit\n");
-        report.append("- Analiză costuri vs venituri\n");
-        report.append("- Proiecții profitabilitate\n");
+        report.append("Perioada: ")
+            .append(startDate.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")))
+            .append(" - ")
+            .append(endDate.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")))
+            .append("\n\n");
+
+        List<SaleItem> saleItems = reportingFacade.getSaleItems(start, end);
+        if (saleItems.isEmpty()) {
+            report.append("Nu există vânzări în perioada selectată.\n");
+            return;
+        }
+
+        Map<Long, ProfitMetrics> byProduct = new HashMap<>();
+        Map<String, ProfitMetrics> byCategory = new HashMap<>();
+
+        for (SaleItem item : saleItems) {
+            Product product = item.getProduct();
+            if (product == null) {
+                continue;
+            }
+
+            BigDecimal revenue = item.getTotalPrice() != null ? item.getTotalPrice() : BigDecimal.ZERO;
+            BigDecimal qty = item.getQuantity() != null ? item.getQuantity() : BigDecimal.ZERO;
+
+            BigDecimal unitCost = calculateUnitCost(product);
+            BigDecimal cost = unitCost.multiply(qty).setScale(2, RoundingMode.HALF_UP);
+            BigDecimal profit = revenue.subtract(cost);
+
+            ProfitMetrics metrics = byProduct.computeIfAbsent(product.getId(), id -> new ProfitMetrics(product.getName()));
+            metrics.add(revenue, cost, profit, qty);
+
+            String category = product.getCategory() != null && !product.getCategory().isBlank()
+                ? product.getCategory()
+                : "Necategorizat";
+            ProfitMetrics catMetrics = byCategory.computeIfAbsent(category, ProfitMetrics::new);
+            catMetrics.add(revenue, cost, profit, qty);
+        }
+
+        report.append("PROFITABILITATE PE PRODUS:\n");
+        report.append("----------------------------------------\n");
+        byProduct.values().forEach(metrics -> report.append(metrics.formatLine()));
+
+        report.append("\nPROFITABILITATE PE CATEGORIE:\n");
+        report.append("----------------------------------------\n");
+        byCategory.values().forEach(metrics -> report.append(metrics.formatLine()));
+    }
+
+    private BigDecimal calculateUnitCost(Product product) {
+        List<RecipeItem> recipeItems = reportingFacade.getRecipeByProduct(product);
+        if (recipeItems == null || recipeItems.isEmpty()) {
+            return BigDecimal.ZERO;
+        }
+
+        BigDecimal total = BigDecimal.ZERO;
+        for (RecipeItem item : recipeItems) {
+            BigDecimal required = item.getRequiredQuantity() != null ? item.getRequiredQuantity() : BigDecimal.ZERO;
+            BigDecimal price = item.getIngredient() != null && item.getIngredient().getLastPurchasePrice() != null
+                ? item.getIngredient().getLastPurchasePrice()
+                : BigDecimal.ZERO;
+            BigDecimal normalizedRequired = toIngredientUnit(item, required);
+            total = total.add(normalizedRequired.multiply(price));
+        }
+        return total.setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal toIngredientUnit(RecipeItem recipeItem, BigDecimal quantity) {
+        if (quantity == null) {
+            return BigDecimal.ZERO;
+        }
+        if (recipeItem == null || recipeItem.getIngredient() == null) {
+            return quantity;
+        }
+        String ingredientUnit = recipeItem.getIngredient().getUnitOfMeasure() != null
+            ? recipeItem.getIngredient().getUnitOfMeasure().name()
+            : null;
+        String recipeUnit = recipeItem.getUnit();
+        if (ingredientUnit == null || ingredientUnit.isBlank() || recipeUnit == null || recipeUnit.isBlank()) {
+            return quantity;
+        }
+        return unitConversionService.convert(quantity, recipeUnit, ingredientUnit);
+    }
+
+    private static class ProfitMetrics {
+        private final String label;
+        private BigDecimal revenue = BigDecimal.ZERO;
+        private BigDecimal cost = BigDecimal.ZERO;
+        private BigDecimal profit = BigDecimal.ZERO;
+        private BigDecimal quantity = BigDecimal.ZERO;
+
+        private ProfitMetrics(String label) {
+            this.label = label;
+        }
+
+        private void add(BigDecimal revenue, BigDecimal cost, BigDecimal profit, BigDecimal quantity) {
+            this.revenue = this.revenue.add(revenue);
+            this.cost = this.cost.add(cost);
+            this.profit = this.profit.add(profit);
+            this.quantity = this.quantity.add(quantity);
+        }
+
+        private String formatLine() {
+            BigDecimal margin = BigDecimal.ZERO;
+            if (revenue.compareTo(BigDecimal.ZERO) > 0) {
+                margin = profit.divide(revenue, 4, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100));
+            }
+            return String.format("%-25s | Qty: %8.2f | Rev: %8.2f | Cost: %8.2f | Profit: %8.2f | Marjă: %6.2f%%\n",
+                label,
+                quantity,
+                revenue,
+                cost,
+                profit,
+                margin
+            );
+        }
     }
     
     @FXML
@@ -232,6 +603,11 @@ public class ReportsController {
                 return;
             }
             
+            if ("Export Contabil CSV".equals(reportType)) {
+                exportAccountingCsv();
+                return;
+            }
+
             // FileChooser pentru salvare PDF
             FileChooser fileChooser = new FileChooser();
             fileChooser.setTitle("Salvează Raport PDF");
@@ -258,6 +634,33 @@ public class ReportsController {
         } catch (Exception e) {
             logger.error("Error exporting PDF", e);
             showError("Eroare la exportarea PDF: " + e.getMessage());
+        }
+    }
+
+    private void exportAccountingCsv() {
+        try {
+            LocalDate startDate = startDatePicker.getValue() != null ? startDatePicker.getValue() : LocalDate.now().minusDays(30);
+            LocalDate endDate = endDatePicker.getValue() != null ? endDatePicker.getValue() : LocalDate.now();
+            LocalDateTime start = startDate.atStartOfDay();
+            LocalDateTime end = endDate.plusDays(1).atStartOfDay().minusSeconds(1);
+
+            FileChooser fileChooser = new FileChooser();
+            fileChooser.setTitle("Salvează Export Contabil CSV");
+            fileChooser.getExtensionFilters().add(
+                new FileChooser.ExtensionFilter("CSV Files", "*.csv")
+            );
+            fileChooser.setInitialFileName("export_contabil_" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy_MM_dd")) + ".csv");
+
+            File selectedFile = fileChooser.showSaveDialog(null);
+            if (selectedFile == null) {
+                return;
+            }
+
+            accountingExportService.exportSalesCsv(start, end, selectedFile.getAbsolutePath());
+            showInfo("Export contabil realizat: " + selectedFile.getAbsolutePath());
+        } catch (Exception e) {
+            logger.error("Error exporting accounting CSV", e);
+            showError("Eroare la export contabil: " + e.getMessage());
         }
     }
     

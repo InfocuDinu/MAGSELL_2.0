@@ -4,10 +4,12 @@ import com.bakerymanager.entity.Ingredient;
 import com.bakerymanager.entity.Product;
 import com.bakerymanager.entity.ProductionReport;
 import com.bakerymanager.entity.RecipeItem;
+import com.bakerymanager.entity.ProductionOrder;
 import com.lowagie.text.DocumentException;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -42,4 +44,16 @@ public interface ProductionFacade {
     List<ProductionReport> getProductionReportsByDateRange(LocalDateTime startDate, LocalDateTime endDate);
 
     void exportProductionReportPdf(ProductionReport report, String filePath) throws IOException, DocumentException;
+
+    ProductionOrder createProductionOrder(LocalDate plannedDate, String notes);
+
+    ProductionOrder addProductionOrderLine(Long productionOrderId, Long productId, BigDecimal plannedQuantity);
+
+    List<ProductionOrder> getProductionOrders(LocalDate startDate, LocalDate endDate);
+
+    ProductionOrder getProductionOrderWithLines(Long productionOrderId);
+
+    ProductionOrder startProductionOrder(Long productionOrderId);
+
+    ProductionOrder completeProductionOrder(Long productionOrderId);
 }

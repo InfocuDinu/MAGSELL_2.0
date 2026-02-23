@@ -28,6 +28,9 @@ public class Product {
     
     @Column(name = "barcode")
     private String barcode;
+
+    @Column(name = "category")
+    private String category;
     
     @Column(name = "is_active")
     private Boolean isActive = true;
@@ -110,6 +113,9 @@ public class Product {
     
     public String getBarcode() { return barcode; }
     public void setBarcode(String barcode) { this.barcode = barcode; }
+
+    public String getCategory() { return category; }
+    public void setCategory(String category) { this.category = category; }
     
     public Boolean getIsActive() { return isActive; }
     public void setIsActive(Boolean isActive) { this.isActive = isActive; }

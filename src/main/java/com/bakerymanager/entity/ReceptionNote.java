@@ -94,6 +94,13 @@ public class ReceptionNote {
     
     @Column(name = "discrepancies_notes", length = 1000)
     private String discrepanciesNotes;
+
+    // Stock posting
+    @Column(name = "posted_to_stock")
+    private Boolean postedToStock = false;
+
+    @Column(name = "posted_at")
+    private LocalDateTime postedAt;
     
     // Timestamps
     @Column(name = "created_at")
@@ -387,6 +394,22 @@ public class ReceptionNote {
     
     public void setDiscrepanciesNotes(String discrepanciesNotes) {
         this.discrepanciesNotes = discrepanciesNotes;
+    }
+
+    public Boolean getPostedToStock() {
+        return postedToStock;
+    }
+
+    public void setPostedToStock(Boolean postedToStock) {
+        this.postedToStock = postedToStock;
+    }
+
+    public LocalDateTime getPostedAt() {
+        return postedAt;
+    }
+
+    public void setPostedAt(LocalDateTime postedAt) {
+        this.postedAt = postedAt;
     }
     
     public LocalDateTime getCreatedAt() {

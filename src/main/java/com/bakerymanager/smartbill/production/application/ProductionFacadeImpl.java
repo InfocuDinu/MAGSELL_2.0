@@ -4,6 +4,7 @@ import com.bakerymanager.entity.Ingredient;
 import com.bakerymanager.entity.Product;
 import com.bakerymanager.entity.ProductionReport;
 import com.bakerymanager.entity.RecipeItem;
+import com.bakerymanager.entity.ProductionOrder;
 import com.bakerymanager.smartbill.production.api.ProductionFacade;
 import com.bakerymanager.smartbill.production.domain.ProductionPort;
 import com.lowagie.text.DocumentException;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -93,5 +95,35 @@ public class ProductionFacadeImpl implements ProductionFacade {
     @Override
     public void exportProductionReportPdf(ProductionReport report, String filePath) throws IOException, DocumentException {
         productionPort.exportProductionReportPdf(report, filePath);
+    }
+
+    @Override
+    public ProductionOrder createProductionOrder(LocalDate plannedDate, String notes) {
+        return productionPort.createProductionOrder(plannedDate, notes);
+    }
+
+    @Override
+    public ProductionOrder addProductionOrderLine(Long productionOrderId, Long productId, BigDecimal plannedQuantity) {
+        return productionPort.addProductionOrderLine(productionOrderId, productId, plannedQuantity);
+    }
+
+    @Override
+    public List<ProductionOrder> getProductionOrders(LocalDate startDate, LocalDate endDate) {
+        return productionPort.getProductionOrders(startDate, endDate);
+    }
+
+    @Override
+    public ProductionOrder getProductionOrderWithLines(Long productionOrderId) {
+        return productionPort.getProductionOrderWithLines(productionOrderId);
+    }
+
+    @Override
+    public ProductionOrder startProductionOrder(Long productionOrderId) {
+        return productionPort.startProductionOrder(productionOrderId);
+    }
+
+    @Override
+    public ProductionOrder completeProductionOrder(Long productionOrderId) {
+        return productionPort.completeProductionOrder(productionOrderId);
     }
 }
