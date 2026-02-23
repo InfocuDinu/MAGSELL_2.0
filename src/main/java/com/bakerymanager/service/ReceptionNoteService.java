@@ -91,6 +91,15 @@ public class ReceptionNoteService {
     public ReceptionNote getReceptionNoteById(Long id) {
         return receptionNoteRepository.findById(id).orElse(null);
     }
+
+    /**
+     * Get reception note with all required associations initialized for PDF export.
+     */
+    @Transactional(readOnly = true)
+    public ReceptionNote getReceptionNoteForPdf(Long id) {
+        return receptionNoteRepository.findByIdWithLinesAndInvoice(id)
+            .orElseThrow(() -> new IllegalArgumentException("Reception note not found: " + id));
+    }
     
     /**
      * Get reception note by NIR number

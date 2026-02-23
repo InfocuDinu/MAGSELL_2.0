@@ -1,8 +1,7 @@
 package com.bakerymanager.controller;
 
 import com.bakerymanager.entity.Ingredient;
-import com.bakerymanager.service.IngredientService;
-import com.bakerymanager.service.InvoiceService;
+import com.bakerymanager.smartbill.inventory.api.InventoryFacade;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -20,12 +19,10 @@ public class InventoryController {
     
     private static final Logger logger = LoggerFactory.getLogger(InventoryController.class);
     
-    private final IngredientService ingredientService;
-    private final InvoiceService invoiceService;
+    private final InventoryFacade inventoryFacade;
     
-    public InventoryController(IngredientService ingredientService, InvoiceService invoiceService) {
-        this.ingredientService = ingredientService;
-        this.invoiceService = invoiceService;
+    public InventoryController(InventoryFacade inventoryFacade) {
+        this.inventoryFacade = inventoryFacade;
     }
     
     // Form fields
@@ -143,7 +140,7 @@ public class InventoryController {
     @FXML
     public void loadIngredients() {
         try {
-            List<Ingredient> ingredients = ingredientService.getAllIngredients();
+            List<Ingredient> ingredients = inventoryFacade.getAllIngredients();
             ingredientList.clear();
             ingredientList.addAll(ingredients);
             updateStatistics();
@@ -235,7 +232,7 @@ public class InventoryController {
             }
             
             // Save ingredient
-            ingredientService.saveIngredient(ingredient);
+            inventoryFacade.saveIngredient(ingredient);
             
             // Reload and update
             loadIngredients();
@@ -286,7 +283,7 @@ public class InventoryController {
         alert.showAndWait().ifPresent(response -> {
             if (response == ButtonType.OK) {
                 try {
-                    ingredientService.deleteIngredient(selectedIngredient.getId());
+                    inventoryFacade.deleteIngredient(selectedIngredient.getId());
                     loadIngredients();
                     updateStatistics();
                     clearForm();
@@ -315,7 +312,7 @@ public class InventoryController {
     }
     
     private void updateStatistics() {
-        List<Ingredient> ingredients = ingredientService.getAllIngredients();
+        List<Ingredient> ingredients = inventoryFacade.getAllIngredients();
         totalIngredientsLabel.setText("Total produse: " + ingredients.size());
     }
     

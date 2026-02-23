@@ -166,9 +166,9 @@ public class PdfService {
             // Products Table
             addSubtitle(document, "Identificarea Mărfurilor:");
             
-            PdfPTable productsTable = new PdfPTable(8);
+            PdfPTable productsTable = new PdfPTable(9);
             productsTable.setWidthPercentage(100);
-            productsTable.setWidths(new float[]{3, 1, 1, 1, 1, 1.5f, 1, 1.5f});
+            productsTable.setWidths(new float[]{3, 1, 1, 1, 1, 1.5f, 1.5f, 1, 1.5f});
             
             // Table Header
             addTableHeader(productsTable, new String[]{

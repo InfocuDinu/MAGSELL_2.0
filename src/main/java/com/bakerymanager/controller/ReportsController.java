@@ -1,7 +1,6 @@
 package com.bakerymanager.controller;
 
-import com.bakerymanager.service.IngredientService;
-import com.bakerymanager.service.ProductService;
+import com.bakerymanager.smartbill.reports.api.ReportingFacade;
 import com.lowagie.text.Document;
 import com.lowagie.text.Element;
 import com.lowagie.text.Font;
@@ -31,12 +30,10 @@ public class ReportsController {
     
     private static final Logger logger = LoggerFactory.getLogger(ReportsController.class);
     
-    private final ProductService productService;
-    private final IngredientService ingredientService;
+    private final ReportingFacade reportingFacade;
     
-    public ReportsController(ProductService productService, IngredientService ingredientService) {
-        this.productService = productService;
-        this.ingredientService = ingredientService;
+    public ReportsController(ReportingFacade reportingFacade) {
+        this.reportingFacade = reportingFacade;
     }
     
     @FXML
@@ -111,7 +108,7 @@ public class ReportsController {
         
         report.append("PRODUSE:\n");
         report.append("----------------------------------------\n");
-        productService.getAvailableProducts().forEach(product -> {
+        reportingFacade.getAvailableProducts().forEach(product -> {
             report.append(String.format("%-30s %8.2f %s\n", 
                 product.getName(), 
                 product.getPhysicalStock(), 
@@ -120,7 +117,7 @@ public class ReportsController {
         
         report.append("\nINGREDIENTE:\n");
         report.append("----------------------------------------\n");
-        ingredientService.getAllIngredients().forEach(ingredient -> {
+        reportingFacade.getAllIngredients().forEach(ingredient -> {
             report.append(String.format("%-30s %8.2f %s\n", 
                 ingredient.getName(), 
                 ingredient.getCurrentStock(), 
@@ -129,7 +126,7 @@ public class ReportsController {
         
         report.append("\nSTOCURI SCĂZUTE:\n");
         report.append("----------------------------------------\n");
-        ingredientService.getLowStockIngredients().forEach(ingredient -> {
+        reportingFacade.getLowStockIngredients().forEach(ingredient -> {
             report.append(String.format("%-30s %8.2f %s (min: %8.2f)\n", 
                 ingredient.getName(), 
                 ingredient.getCurrentStock(),
@@ -180,7 +177,7 @@ public class ReportsController {
         report.append("=== RAPORT COSTURI ===\n");
         report.append("Generat la: ").append(LocalDate.now().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"))).append("\n\n");
         
-        BigDecimal totalStockValue = ingredientService.getAllIngredients().stream()
+        BigDecimal totalStockValue = reportingFacade.getAllIngredients().stream()
             .filter(ing -> ing.getCurrentStock() != null && ing.getLastPurchasePrice() != null)
             .map(ing -> ing.getCurrentStock().multiply(ing.getLastPurchasePrice()))
             .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -189,7 +186,7 @@ public class ReportsController {
         
         report.append("DETALII COSTURI INGREDIENTE:\n");
         report.append("----------------------------------------\n");
-        ingredientService.getAllIngredients().forEach(ingredient -> {
+        reportingFacade.getAllIngredients().forEach(ingredient -> {
             if (ingredient.getCurrentStock() != null && ingredient.getLastPurchasePrice() != null) {
                 BigDecimal value = ingredient.getCurrentStock().multiply(ingredient.getLastPurchasePrice());
                 report.append(String.format("%-30s %8.2f %s @ %8.2f = %8.2f lei\n", 
@@ -353,7 +350,7 @@ public class ReportsController {
             productsTable.addCell(createCell("Stoc", headerFont));
             productsTable.addCell(createCell("Unitate", headerFont));
             
-            productService.getAvailableProducts().forEach(product -> {
+            reportingFacade.getAvailableProducts().forEach(product -> {
                 productsTable.addCell(createCell(product.getName(), normalFont));
                 productsTable.addCell(createCell(String.format("%.2f", product.getPhysicalStock()), normalFont));
                 productsTable.addCell(createCell("buc", normalFont));
@@ -375,7 +372,7 @@ public class ReportsController {
             ingredientsTable.addCell(createCell("Stoc", headerFont));
             ingredientsTable.addCell(createCell("Unitate", headerFont));
             
-            ingredientService.getAllIngredients().forEach(ingredient -> {
+            reportingFacade.getAllIngredients().forEach(ingredient -> {
                 ingredientsTable.addCell(createCell(ingredient.getName(), normalFont));
                 ingredientsTable.addCell(createCell(String.format("%.2f", ingredient.getCurrentStock()), normalFont));
                 ingredientsTable.addCell(createCell(ingredient.getUnitOfMeasure().getDisplayName(), normalFont));
@@ -394,7 +391,7 @@ public class ReportsController {
             costTable.addCell(createCell("Preț", headerFont));
             costTable.addCell(createCell("Valoare", headerFont));
             
-            ingredientService.getAllIngredients().forEach(ingredient -> {
+            reportingFacade.getAllIngredients().forEach(ingredient -> {
                 if (ingredient.getCurrentStock() != null && ingredient.getLastPurchasePrice() != null) {
                     BigDecimal value = ingredient.getCurrentStock().multiply(ingredient.getLastPurchasePrice());
                     

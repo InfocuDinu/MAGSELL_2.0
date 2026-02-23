@@ -4,10 +4,7 @@ import com.bakerymanager.entity.Product;
 import com.bakerymanager.entity.ProductionReport;
 import com.bakerymanager.entity.RecipeItem;
 import com.bakerymanager.entity.Ingredient;
-import com.bakerymanager.service.IngredientService;
-import com.bakerymanager.service.ProductionService;
-import com.bakerymanager.service.ProductService;
-import com.bakerymanager.service.PdfService;
+import com.bakerymanager.smartbill.production.api.ProductionFacade;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -34,19 +31,10 @@ public class ProductionController {
     
     private static final Logger logger = LoggerFactory.getLogger(ProductionController.class);
     
-    private final ProductionService productionService;
-    private final ProductService productService;
-    private final IngredientService ingredientService;
-    private final PdfService pdfService;
+    private final ProductionFacade productionFacade;
     
-    public ProductionController(ProductionService productionService, 
-                              ProductService productService,
-                              IngredientService ingredientService,
-                              PdfService pdfService) {
-        this.productionService = productionService;
-        this.productService = productService;
-        this.ingredientService = ingredientService;
-        this.pdfService = pdfService;
+    public ProductionController(ProductionFacade productionFacade) {
+        this.productionFacade = productionFacade;
     }
     
     @FXML
@@ -148,7 +136,7 @@ public class ProductionController {
     }
     
     private void setupProductComboBox() {
-        productComboBox.setItems(FXCollections.observableArrayList(productService.getActiveProducts()));
+        productComboBox.setItems(FXCollections.observableArrayList(productionFacade.getActiveProducts()));
         
         // Setăm cum să afișăm produsele în ComboBox
         productComboBox.setConverter(new javafx.util.StringConverter<Product>() {
@@ -160,7 +148,7 @@ public class ProductionController {
             @Override
             public Product fromString(String string) {
                 // Căutăm produsul după nume
-                return productService.getActiveProducts().stream()
+                return productionFacade.getActiveProducts().stream()
                     .filter(p -> p.getName().equals(string))
                     .findFirst()
                     .orElse(null);
@@ -184,7 +172,7 @@ public class ProductionController {
                     return new javafx.beans.property.SimpleStringProperty(item.getIngredient().getName());
                 } else if (item != null && item.getIngredientId() != null) {
                     // Încercăm să încărcăm ingredientul după ID dacă e lazy loaded
-                    Ingredient ingredient = ingredientService.getIngredientById(item.getIngredientId()).orElse(null);
+                    Ingredient ingredient = productionFacade.getIngredientById(item.getIngredientId()).orElse(null);
                     if (ingredient != null) {
                         return new javafx.beans.property.SimpleStringProperty(ingredient.getName());
                     }
@@ -203,7 +191,7 @@ public class ProductionController {
                 if (item != null && item.getIngredient() != null) {
                     return new javafx.beans.property.SimpleStringProperty(item.getIngredient().getUnitOfMeasure().getDisplayName());
                 } else if (item != null && item.getIngredientId() != null) {
-                    Ingredient ingredient = ingredientService.getIngredientById(item.getIngredientId()).orElse(null);
+                    Ingredient ingredient = productionFacade.getIngredientById(item.getIngredientId()).orElse(null);
                     if (ingredient != null) {
                         return new javafx.beans.property.SimpleStringProperty(ingredient.getUnitOfMeasure().getDisplayName());
                     }
@@ -220,7 +208,7 @@ public class ProductionController {
                 if (item != null && item.getIngredient() != null) {
                     return new javafx.beans.property.SimpleObjectProperty<>(item.getIngredient().getCurrentStock());
                 } else if (item != null && item.getIngredientId() != null) {
-                    Ingredient ingredient = ingredientService.getIngredientById(item.getIngredientId()).orElse(null);
+                    Ingredient ingredient = productionFacade.getIngredientById(item.getIngredientId()).orElse(null);
                     if (ingredient != null) {
                         return new javafx.beans.property.SimpleObjectProperty<>(ingredient.getCurrentStock());
                     }
@@ -270,7 +258,7 @@ public class ProductionController {
     }
     
     private void loadProducts() {
-        List<Product> products = productService.getActiveProducts();
+        List<Product> products = productionFacade.getActiveProducts();
         logger.debug("Available products: {}", products.size());
         for (Product p : products) {
             logger.debug("Product: {} (Stock: {}, Price: {})", p.getName(), p.getPhysicalStock(), p.getSalePrice());
@@ -280,7 +268,7 @@ public class ProductionController {
     
     private void loadRecipe() {
         if (selectedProduct != null) {
-            List<RecipeItem> items = productionService.getRecipeByProduct(selectedProduct);
+            List<RecipeItem> items = productionFacade.getRecipeByProduct(selectedProduct);
             recipeItems.clear();
             
             // Debug: Afișăm ce am găsit
@@ -302,7 +290,7 @@ public class ProductionController {
     private void refreshProductionHistory() {
         try {
             productionHistory.clear();
-            List<com.bakerymanager.entity.ProductionReport> reports = productionService.getAllProductionReports();
+            List<com.bakerymanager.entity.ProductionReport> reports = productionFacade.getAllProductionReports();
             
             for (com.bakerymanager.entity.ProductionReport report : reports) {
                 ProductionRecord record = new ProductionRecord(report);
@@ -332,7 +320,7 @@ public class ProductionController {
     public void createNewProduct() {
         Dialog<Product> dialog = createProductDialog();
         dialog.showAndWait().ifPresent(product -> {
-            productService.saveProduct(product);
+            productionFacade.saveProduct(product);
             loadProducts(); // Reîncărcăm lista de produse
             
             // Selectăm automat produsul nou creat
@@ -450,11 +438,11 @@ public class ProductionController {
                     product.setIsActive(true);
                     
                     // Salvăm produsul mai întâi pentru a obține ID
-                    Product savedProduct = productService.saveProduct(product);
+                    Product savedProduct = productionFacade.saveProduct(product);
                     
                     // Creăm rețeta
                     for (RecipeIngredient ri : ingredients) {
-                        productionService.addRecipeItem(savedProduct.getId(), ri.getIngredientId(), ri.getQuantityValue());
+                        productionFacade.addRecipeItem(savedProduct.getId(), ri.getIngredientId(), ri.getQuantityValue());
                     }
                     
                     return savedProduct;
@@ -486,7 +474,7 @@ public class ProductionController {
         grid.setPadding(new Insets(20, 150, 10, 10));
         
         ComboBox<Ingredient> ingredientCombo = new ComboBox<>();
-        List<Ingredient> ingredients = ingredientService.getAllIngredients();
+        List<Ingredient> ingredients = productionFacade.getAllIngredients();
         logger.debug("Available ingredients: {}", ingredients.size());
         for (Ingredient ing : ingredients) {
             logger.debug("Ingredient: {} (Stock: {})", ing.getName(), ing.getCurrentStock());
@@ -504,7 +492,7 @@ public class ProductionController {
             @Override
             public Ingredient fromString(String string) {
                 // Căutăm ingredientul după nume
-                return ingredientService.getAllIngredients().stream()
+                return productionFacade.getAllIngredients().stream()
                     .filter(i -> i.getName().equals(string))
                     .findFirst()
                     .orElse(null);
@@ -593,14 +581,14 @@ public class ProductionController {
             
             productionStatusLabel.setText("Producție în curs...");
             
-            if (!productionService.canProduce(selectedProduct.getId(), quantity)) {
+            if (!productionFacade.canProduce(selectedProduct.getId(), quantity)) {
                 showError("Stoc insuficient pentru producție!");
                 stockStatusLabel.setText("❌ Stoc insuficient");
                 productionStatusLabel.setText("Eroare producție");
                 return;
             }
             
-            productionService.executeProduction(selectedProduct.getId(), quantity);
+            productionFacade.executeProduction(selectedProduct.getId(), quantity);
             
             // Reload production history from database
             refreshProductionHistory();
@@ -639,7 +627,7 @@ public class ProductionController {
         try {
             BigDecimal quantity = new BigDecimal(quantityText);
             Map<Ingredient, BigDecimal> requiredIngredients = 
-                productionService.calculateRequiredIngredients(selectedProduct.getId(), quantity);
+                productionFacade.calculateRequiredIngredients(selectedProduct.getId(), quantity);
             
             StringBuilder stockInfo = new StringBuilder();
             stockInfo.append("Verificare stoc pentru ").append(quantity)
@@ -694,7 +682,7 @@ public class ProductionController {
         
         Dialog<RecipeItemData> dialog = createRecipeItemDialog();
         dialog.showAndWait().ifPresent(data -> {
-            productionService.addRecipeItem(selectedProduct.getId(), data.ingredientId, data.quantity);
+            productionFacade.addRecipeItem(selectedProduct.getId(), data.ingredientId, data.quantity);
             loadRecipe();
             showSuccessMessage("Ingredient adăugat la rețetă!");
         });
@@ -725,7 +713,7 @@ public class ProductionController {
         alert.setContentText("Ingredient: " + (item.getIngredient() != null ? item.getIngredient().getName() : ""));
         
         if (alert.showAndWait().get() == ButtonType.OK) {
-            productionService.removeRecipeItem(item.getId());
+            productionFacade.removeRecipeItem(item.getId());
             loadRecipe();
             showSuccessMessage("Ingredient șters din rețetă!");
         }
@@ -782,7 +770,7 @@ public class ProductionController {
         grid.setPadding(new javafx.geometry.Insets(20, 150, 10, 10));
         
         ComboBox<Ingredient> ingredientCombo = new ComboBox<>();
-        List<Ingredient> ingredients = ingredientService.getAllIngredients();
+        List<Ingredient> ingredients = productionFacade.getAllIngredients();
         logger.debug("Ingredients available for recipe: {}", ingredients.size());
         for (Ingredient ing : ingredients) {
             logger.debug("Ingredient: {} (Stock: {})", ing.getName(), ing.getCurrentStock());
@@ -799,7 +787,7 @@ public class ProductionController {
             @Override
             public Ingredient fromString(String string) {
                 // Căutăm ingredientul după nume
-                return ingredientService.getAllIngredients().stream()
+                return productionFacade.getAllIngredients().stream()
                     .filter(i -> i.getName().equals(string))
                     .findFirst()
                     .orElse(null);
@@ -894,7 +882,7 @@ public class ProductionController {
             
             if (file != null) {
                 // Generate PDF
-                pdfService.generateProductionReportPdf(selectedReport, file.getAbsolutePath());
+                productionFacade.exportProductionReportPdf(selectedReport, file.getAbsolutePath());
                 
                 showSuccessMessage("Raport exportat cu succes în: " + file.getAbsolutePath());
                 logger.info("Production report exported to PDF: {}", file.getAbsolutePath());
@@ -1023,7 +1011,7 @@ public class ProductionController {
                         selectedReport.setNotes(notesArea.getText());
                         
                         // Save to database
-                        productionService.saveProductionReport(selectedReport);
+                        productionFacade.saveProductionReport(selectedReport);
                         
                         // Refresh table
                         refreshProductionHistory();

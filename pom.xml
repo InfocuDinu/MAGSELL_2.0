@@ -134,9 +134,6 @@
                 <version>0.0.8</version>
                 <configuration>
                     <mainClass>com.bakerymanager.BakeryApplication</mainClass>
-                    <args>
-                        <arg>--add-modules=javafx.controls,javafx.fxml</arg>
-                    </args>
                 </configuration>
             </plugin>
 

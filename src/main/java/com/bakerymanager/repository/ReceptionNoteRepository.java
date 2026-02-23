@@ -13,6 +13,12 @@ import java.util.Optional;
 
 @Repository
 public interface ReceptionNoteRepository extends JpaRepository<ReceptionNote, Long> {
+
+    @Query("SELECT DISTINCT rn FROM ReceptionNote rn " +
+           "LEFT JOIN FETCH rn.lines " +
+           "LEFT JOIN FETCH rn.invoice " +
+           "WHERE rn.id = :id")
+    Optional<ReceptionNote> findByIdWithLinesAndInvoice(@Param("id") Long id);
     
     Optional<ReceptionNote> findByNirNumber(String nirNumber);
     

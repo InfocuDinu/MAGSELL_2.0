@@ -5,10 +5,8 @@ import com.bakerymanager.entity.Invoice;
 import com.bakerymanager.entity.Ingredient;
 import com.bakerymanager.entity.ReceptionNote;
 import com.bakerymanager.entity.ReceptionNoteLine;
-import com.bakerymanager.service.InvoiceService;
 import com.bakerymanager.service.IngredientService;
-import com.bakerymanager.service.ReceptionNoteService;
-import com.bakerymanager.service.PdfService;
+import com.bakerymanager.smartbill.invoicing.api.InvoicingFacade;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -40,17 +38,13 @@ public class InvoicesController {
     
     private static final Logger logger = LoggerFactory.getLogger(InvoicesController.class);
     
-    private final InvoiceService invoiceService;
+    private final InvoicingFacade invoicingFacade;
     private final IngredientService ingredientService;
-    private final ReceptionNoteService receptionNoteService;
-    private final PdfService pdfService;
     
-    public InvoicesController(InvoiceService invoiceService, IngredientService ingredientService,
-                             ReceptionNoteService receptionNoteService, PdfService pdfService) {
-        this.invoiceService = invoiceService;
+    
+    public InvoicesController(InvoicingFacade invoicingFacade, IngredientService ingredientService) {
+        this.invoicingFacade = invoicingFacade;
         this.ingredientService = ingredientService;
-        this.receptionNoteService = receptionNoteService;
-        this.pdfService = pdfService;
     }
     
     @FXML
@@ -134,7 +128,7 @@ public class InvoicesController {
     }
     
     private void loadInvoices() {
-        List<Invoice> invoiceList = invoiceService.getAllInvoices();
+        List<Invoice> invoiceList = invoicingFacade.getAllInvoices();
         invoices.clear();
         invoices.addAll(invoiceList);
     }
@@ -195,7 +189,7 @@ public class InvoicesController {
             Invoice invoice = convertDtoToInvoice(invoiceDto, selectedFile.getName());
             
             // Salvăm în baza de date
-            invoiceService.saveInvoice(invoice);
+            invoicingFacade.saveImportedInvoice(invoice);
             
             // Actualizăm interfața
             loadInvoices();
@@ -487,7 +481,7 @@ public class InvoicesController {
                     invoice.setImportDate(LocalDateTime.now());
                     
                     // Save invoice with lines
-                    Invoice savedInvoice = invoiceService.saveInvoiceWithLines(invoice, invoiceLines);
+                    Invoice savedInvoice = invoicingFacade.saveManualInvoiceWithLines(invoice, invoiceLines);
                     
                     // Reload invoices
                     loadInvoices();
@@ -709,7 +703,7 @@ public class InvoicesController {
             }
             
             // Create NIR from invoice
-            ReceptionNote nir = receptionNoteService.createFromInvoice(
+            ReceptionNote nir = invoicingFacade.createReceptionNoteFromInvoice(
                 selectedInvoice.getId(),
                 "MAGSELL 2.0 - BakeryManager Pro",
                 "Str. Exemplu Nr. 1, București"
@@ -730,7 +724,7 @@ public class InvoicesController {
     @FXML
     public void loadReceptionNotes() {
         try {
-            List<ReceptionNote> notes = receptionNoteService.getAllReceptionNotes();
+            List<ReceptionNote> notes = invoicingFacade.getAllReceptionNotes();
             receptionNotes.clear();
             receptionNotes.addAll(notes);
             
@@ -805,9 +799,12 @@ public class InvoicesController {
     
     private void editReceptionNote(ReceptionNote nir) {
         try {
+            // Reload full entity with initialized lines to avoid LazyInitializationException
+            final ReceptionNote editableNir = invoicingFacade.getReceptionNoteForExport(nir.getId());
+
             // Main dialog
             javafx.scene.control.Dialog<javafx.scene.control.ButtonType> dialog = new javafx.scene.control.Dialog<>();
-            dialog.setTitle("Editare NIR - " + nir.getNirNumber());
+            dialog.setTitle("Editare NIR - " + editableNir.getNirNumber());
             dialog.setHeaderText("Editare Notă de Intrare Recepție");
             
             // Create TabPane for organized sections
@@ -822,66 +819,66 @@ public class InvoicesController {
             headerGrid.setPadding(new javafx.geometry.Insets(20, 20, 20, 20));
             
             // NIR Number (read-only)
-            javafx.scene.control.TextField nirNumberField = new javafx.scene.control.TextField(nir.getNirNumber());
+            javafx.scene.control.TextField nirNumberField = new javafx.scene.control.TextField(editableNir.getNirNumber());
             nirNumberField.setEditable(false);
             nirNumberField.setStyle("-fx-background-color: #f5f5f5;");
             
             // Invoice Number (read-only, from linked invoice)
             javafx.scene.control.TextField invoiceField = new javafx.scene.control.TextField(
-                nir.getInvoice() != null ? nir.getInvoice().getInvoiceNumber() : ""
+                editableNir.getInvoice() != null ? editableNir.getInvoice().getInvoiceNumber() : ""
             );
             invoiceField.setEditable(false);
             invoiceField.setStyle("-fx-background-color: #f5f5f5;");
             
             // NIR Date
             javafx.scene.control.DatePicker nirDatePicker = new javafx.scene.control.DatePicker(
-                nir.getNirDate() != null ? nir.getNirDate().toLocalDate() : LocalDate.now()
+                editableNir.getNirDate() != null ? editableNir.getNirDate().toLocalDate() : LocalDate.now()
             );
             
             // Status
             javafx.scene.control.ComboBox<ReceptionNote.NirStatus> statusCombo = new javafx.scene.control.ComboBox<>();
             statusCombo.getItems().addAll(ReceptionNote.NirStatus.values());
-            statusCombo.setValue(nir.getStatus());
+            statusCombo.setValue(editableNir.getStatus());
             
             // Company Name
             javafx.scene.control.TextField companyNameField = new javafx.scene.control.TextField(
-                nir.getCompanyName() != null ? nir.getCompanyName() : ""
+                editableNir.getCompanyName() != null ? editableNir.getCompanyName() : ""
             );
             
             // Company Address
             javafx.scene.control.TextField companyAddressField = new javafx.scene.control.TextField(
-                nir.getCompanyAddress() != null ? nir.getCompanyAddress() : ""
+                editableNir.getCompanyAddress() != null ? editableNir.getCompanyAddress() : ""
             );
             
             // Delivery Note Number
             javafx.scene.control.TextField deliveryNoteField = new javafx.scene.control.TextField(
-                nir.getDeliveryNoteNumber() != null ? nir.getDeliveryNoteNumber() : ""
+                editableNir.getDeliveryNoteNumber() != null ? editableNir.getDeliveryNoteNumber() : ""
             );
             
             // Reception Date
             javafx.scene.control.DatePicker receptionDatePicker = new javafx.scene.control.DatePicker(
-                nir.getReceptionDate() != null ? nir.getReceptionDate().toLocalDate() : LocalDate.now()
+                editableNir.getReceptionDate() != null ? editableNir.getReceptionDate().toLocalDate() : LocalDate.now()
             );
             
             // Committee members
             javafx.scene.control.TextField committee1Field = new javafx.scene.control.TextField(
-                nir.getCommittee1Name() != null ? nir.getCommittee1Name() : ""
+                editableNir.getCommittee1Name() != null ? editableNir.getCommittee1Name() : ""
             );
             javafx.scene.control.TextField committee2Field = new javafx.scene.control.TextField(
-                nir.getCommittee2Name() != null ? nir.getCommittee2Name() : ""
+                editableNir.getCommittee2Name() != null ? editableNir.getCommittee2Name() : ""
             );
             javafx.scene.control.TextField committee3Field = new javafx.scene.control.TextField(
-                nir.getCommittee3Name() != null ? nir.getCommittee3Name() : ""
+                editableNir.getCommittee3Name() != null ? editableNir.getCommittee3Name() : ""
             );
             
             // Warehouse Manager
             javafx.scene.control.TextField warehouseManagerField = new javafx.scene.control.TextField(
-                nir.getWarehouseManagerName() != null ? nir.getWarehouseManagerName() : ""
+                editableNir.getWarehouseManagerName() != null ? editableNir.getWarehouseManagerName() : ""
             );
             
             // Discrepancies Notes
             javafx.scene.control.TextArea discrepanciesArea = new javafx.scene.control.TextArea(
-                nir.getDiscrepanciesNotes() != null ? nir.getDiscrepanciesNotes() : ""
+                editableNir.getDiscrepanciesNotes() != null ? editableNir.getDiscrepanciesNotes() : ""
             );
             discrepanciesArea.setPrefRowCount(3);
             
@@ -936,10 +933,10 @@ public class InvoicesController {
             // Product lines table
             javafx.scene.control.TableView<ReceptionNoteLine> linesTable = new javafx.scene.control.TableView<>();
             // Ensure lines list is never null
-            List<ReceptionNoteLine> nirLines = nir.getLines();
+            List<ReceptionNoteLine> nirLines = editableNir.getLines();
             if (nirLines == null) {
                 nirLines = new ArrayList<>();
-                nir.setLines(nirLines);
+                editableNir.setLines(nirLines);
             }
             javafx.collections.ObservableList<ReceptionNoteLine> lines = javafx.collections.FXCollections.observableArrayList(nirLines);
             linesTable.setItems(lines);
@@ -1168,17 +1165,17 @@ public class InvoicesController {
                 if (response == javafx.scene.control.ButtonType.OK) {
                     try {
                         // Update NIR header
-                        nir.setNirDate(nirDatePicker.getValue().atStartOfDay());
-                        nir.setStatus(statusCombo.getValue());
-                        nir.setCompanyName(companyNameField.getText());
-                        nir.setCompanyAddress(companyAddressField.getText());
-                        nir.setDeliveryNoteNumber(deliveryNoteField.getText());
-                        nir.setReceptionDate(receptionDatePicker.getValue().atStartOfDay());
-                        nir.setCommittee1Name(committee1Field.getText());
-                        nir.setCommittee2Name(committee2Field.getText());
-                        nir.setCommittee3Name(committee3Field.getText());
-                        nir.setWarehouseManagerName(warehouseManagerField.getText());
-                        nir.setDiscrepanciesNotes(discrepanciesArea.getText());
+                        editableNir.setNirDate(nirDatePicker.getValue().atStartOfDay());
+                        editableNir.setStatus(statusCombo.getValue());
+                        editableNir.setCompanyName(companyNameField.getText());
+                        editableNir.setCompanyAddress(companyAddressField.getText());
+                        editableNir.setDeliveryNoteNumber(deliveryNoteField.getText());
+                        editableNir.setReceptionDate(receptionDatePicker.getValue().atStartOfDay());
+                        editableNir.setCommittee1Name(committee1Field.getText());
+                        editableNir.setCommittee2Name(committee2Field.getText());
+                        editableNir.setCommittee3Name(committee3Field.getText());
+                        editableNir.setWarehouseManagerName(warehouseManagerField.getText());
+                        editableNir.setDiscrepanciesNotes(discrepanciesArea.getText());
                         
                         // Lines are already updated via table editing
                         // Recalculate all line values
@@ -1189,17 +1186,17 @@ public class InvoicesController {
                         }
                         
                         // Update totals
-                        nir.calculateTotals();
-                        nir.checkDiscrepancies();
+                        editableNir.calculateTotals();
+                        editableNir.checkDiscrepancies();
                         
                         // Save to database
-                        receptionNoteService.saveReceptionNote(nir);
+                        invoicingFacade.saveReceptionNote(editableNir);
                         
                         // Refresh table
                         loadReceptionNotes();
                         
                         showSuccessMessage("NIR actualizat cu succes!");
-                        logger.info("NIR updated: {} with {} lines", nir.getNirNumber(), lines.size());
+                        logger.info("NIR updated: {} with {} lines", editableNir.getNirNumber(), lines.size());
                         
                     } catch (Exception e) {
                         logger.error("Error updating NIR", e);
@@ -1231,7 +1228,7 @@ public class InvoicesController {
             File file = fileChooser.showSaveDialog(nirTable.getScene().getWindow());
             
             if (file != null) {
-                pdfService.generateReceptionNotePdf(nir, file.getAbsolutePath());
+                invoicingFacade.exportReceptionNotePdf(nir.getId(), file.getAbsolutePath());
                 showSuccessMessage("NIR exportat cu succes în: " + file.getAbsolutePath());
                 logger.info("NIR exported to PDF: {}", file.getAbsolutePath());
             }

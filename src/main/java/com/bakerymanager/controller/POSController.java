@@ -1,9 +1,8 @@
 package com.bakerymanager.controller;
 
 import com.bakerymanager.entity.Product;
-import com.bakerymanager.service.ProductService;
 import com.bakerymanager.service.SaleService;
-import com.bakerymanager.service.FiscalPrinterService;
+import com.bakerymanager.smartbill.sales.api.SalesFacade;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -28,14 +27,10 @@ public class POSController {
     
     private static final Logger logger = LoggerFactory.getLogger(POSController.class);
     
-    private final ProductService productService;
-    private final SaleService saleService;
-    private final FiscalPrinterService fiscalPrinterService;
+    private final SalesFacade salesFacade;
     
-    public POSController(ProductService productService, SaleService saleService, FiscalPrinterService fiscalPrinterService) {
-        this.productService = productService;
-        this.saleService = saleService;
-        this.fiscalPrinterService = fiscalPrinterService;
+    public POSController(SalesFacade salesFacade) {
+        this.salesFacade = salesFacade;
     }
     
     @FXML
@@ -202,7 +197,7 @@ public class POSController {
     
     @FXML
     public void loadProducts() {
-        availableProducts = productService.getAvailableProducts();
+        availableProducts = salesFacade.getAvailableProducts();
         displayProducts(availableProducts);
         posStatusLabel.setText("Produse încărcate: " + availableProducts.size());
     }
@@ -537,7 +532,7 @@ public class POSController {
             String paymentMethod = paymentMethodCombo.getValue();
             String operator = "Operator"; // Poate fi preluat din sistem de login
             
-            com.bakerymanager.entity.Sale savedSale = saleService.createSale(
+            com.bakerymanager.entity.Sale savedSale = salesFacade.createSale(
                 saleCartItems, 
                 paymentMethod, 
                 amountReceived, 
@@ -546,12 +541,12 @@ public class POSController {
             
             // Print fiscal receipt
             try {
-                boolean printed = fiscalPrinterService.printReceipt(savedSale);
+                boolean printed = salesFacade.printFiscalReceipt(savedSale);
                 if (printed) {
                     logger.info("Fiscal receipt printed for sale ID: {}", savedSale.getId());
                 } else {
-                    logger.warn("Failed to print fiscal receipt: {}", fiscalPrinterService.getLastError());
-                    showWarning("Vânzare salvată, dar bonul fiscal nu a putut fi tipărit.\nMotiv: " + fiscalPrinterService.getLastError());
+                    logger.warn("Failed to print fiscal receipt: {}", salesFacade.getLastFiscalError());
+                    showWarning("Vânzare salvată, dar bonul fiscal nu a putut fi tipărit.\nMotiv: " + salesFacade.getLastFiscalError());
                 }
             } catch (Exception e) {
                 logger.error("Error printing fiscal receipt", e);
