@@ -14,7 +14,8 @@ public class StockMovement {
         CONSUMPTION,
         ADJUSTMENT,
         WASTE,
-        RETURN
+        RETURN,
+        TRANSFER
     }
 
     @Id
@@ -50,6 +51,12 @@ public class StockMovement {
 
     @Column(name = "notes", length = 500)
     private String notes;
+
+    @Column(name = "reason", length = 300)
+    private String reason;
+
+    @Column(name = "performed_by_user", length = 100)
+    private String performedByUser;
 
     @PrePersist
     protected void onCreate() {
@@ -91,4 +98,10 @@ public class StockMovement {
 
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
+
+    public String getReason() { return reason; }
+    public void setReason(String reason) { this.reason = reason; }
+
+    public String getPerformedByUser() { return performedByUser; }
+    public void setPerformedByUser(String performedByUser) { this.performedByUser = performedByUser; }
 }

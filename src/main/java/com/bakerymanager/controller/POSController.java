@@ -5,10 +5,16 @@ import com.bakerymanager.service.SaleService;
 import com.bakerymanager.smartbill.sales.api.SalesFacade;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyCodeCombination;
+import javafx.scene.input.KeyCombination;
+import javafx.scene.Node;
 import javafx.scene.layout.TilePane;
+import javafx.scene.layout.VBox;
 import javafx.scene.layout.GridPane;
 import javafx.scene.text.Font;
 import org.slf4j.Logger;
@@ -19,8 +25,10 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Controller
 public class POSController {
@@ -44,6 +52,9 @@ public class POSController {
     
     @FXML
     private TilePane productTilePane;
+
+    @FXML
+    private TilePane favoriteTilePane;
     
     @FXML
     private TableView<CartItem> cartTable;
@@ -88,6 +99,7 @@ public class POSController {
     private List<Product> availableProducts;
     private BigDecimal dailySales = BigDecimal.ZERO;
     private BigDecimal cachedCartTotal = BigDecimal.ZERO;
+    private final Set<Long> favoriteProductIds = new HashSet<>();
     
     public static class CartItem {
         private Product product;
@@ -123,7 +135,26 @@ public class POSController {
         loadProducts();
         startClock();
         updateCartSummary();
+        registerKeyboardShortcuts();
         logger.info("POS controller initialized");
+    }
+
+    private void registerKeyboardShortcuts() {
+        Platform.runLater(() -> {
+            if (posStatusLabel == null || posStatusLabel.getScene() == null) {
+                return;
+            }
+
+            var accelerators = posStatusLabel.getScene().getAccelerators();
+            accelerators.put(new KeyCodeCombination(KeyCode.F2), () -> searchProductField.requestFocus());
+            accelerators.put(new KeyCodeCombination(KeyCode.F4), this::processPayment);
+            accelerators.put(new KeyCodeCombination(KeyCode.F6), this::clearCart);
+            accelerators.put(new KeyCodeCombination(KeyCode.F7), this::printReceipt);
+            accelerators.put(new KeyCodeCombination(KeyCode.F8), this::showDailyReport);
+            accelerators.put(new KeyCodeCombination(KeyCode.M, KeyCombination.CONTROL_DOWN), this::addProductManually);
+
+            posStatusLabel.setText("POS ultra-rapid activ: F2 Căutare | F4 Încasează | F6 Golește | F7 Bon | Ctrl+M Manual");
+        });
     }
     
     private void setupPaymentMethods() {
@@ -198,20 +229,33 @@ public class POSController {
     @FXML
     public void loadProducts() {
         availableProducts = salesFacade.getAvailableProducts();
+        initializeDefaultFavorites();
         displayProducts(availableProducts);
+        refreshFavoriteButtons();
         posStatusLabel.setText("Produse încărcate: " + availableProducts.size());
+    }
+
+    private void initializeDefaultFavorites() {
+        if (!favoriteProductIds.isEmpty() || availableProducts == null) {
+            return;
+        }
+        availableProducts.stream().limit(6).forEach(p -> {
+            if (p.getId() != null) {
+                favoriteProductIds.add(p.getId());
+            }
+        });
     }
     
     private void displayProducts(List<Product> products) {
         productTilePane.getChildren().clear();
         
         for (Product product : products) {
-            Button productButton = createProductButton(product);
-            productTilePane.getChildren().add(productButton);
+            Node productCard = createProductButton(product);
+            productTilePane.getChildren().add(productCard);
         }
     }
     
-    private Button createProductButton(Product product) {
+    private VBox createProductButton(Product product) {
         Button button = new Button();
         button.getStyleClass().add("pos-product-button");
         button.setText(product.getName() + "\n" + product.getSalePrice() + " lei");
@@ -226,21 +270,95 @@ public class POSController {
             button.setDisable(true);
             button.setText(product.getName() + "\nStoc epuizat");
         }
-        
-        return button;
+
+        Button favoriteButton = new Button(favoriteProductIds.contains(product.getId()) ? "★" : "☆");
+        favoriteButton.setPrefWidth(140);
+        favoriteButton.getStyleClass().addAll("button", "primary");
+        favoriteButton.setOnAction(event -> {
+            toggleFavorite(product);
+            favoriteButton.setText(favoriteProductIds.contains(product.getId()) ? "★" : "☆");
+        });
+
+        VBox box = new VBox(4, button, favoriteButton);
+        return box;
+    }
+
+    private void toggleFavorite(Product product) {
+        if (product.getId() == null) {
+            return;
+        }
+
+        if (favoriteProductIds.contains(product.getId())) {
+            favoriteProductIds.remove(product.getId());
+            posStatusLabel.setText("Eliminat din favorite: " + product.getName());
+        } else {
+            favoriteProductIds.add(product.getId());
+            posStatusLabel.setText("Adăugat în favorite: " + product.getName());
+        }
+        refreshFavoriteButtons();
+    }
+
+    private void refreshFavoriteButtons() {
+        if (favoriteTilePane == null) {
+            return;
+        }
+        favoriteTilePane.getChildren().clear();
+        if (availableProducts == null) {
+            return;
+        }
+
+        availableProducts.stream()
+            .filter(p -> p.getId() != null && favoriteProductIds.contains(p.getId()))
+            .limit(12)
+            .forEach(p -> {
+                Button quick = new Button("⭐ " + p.getName());
+                quick.setPrefWidth(180);
+                quick.getStyleClass().addAll("button", "success");
+                quick.setOnAction(e -> addToCart(p));
+                favoriteTilePane.getChildren().add(quick);
+            });
     }
     
     private void filterProducts(String searchText) {
-        if (searchText == null || searchText.trim().isEmpty()) {
+        if (availableProducts == null || searchText == null || searchText.trim().isEmpty()) {
             displayProducts(availableProducts);
             return;
         }
+
+        String searchLower = searchText.toLowerCase();
         
         List<Product> filtered = availableProducts.stream()
-            .filter(product -> product.getName().toLowerCase().contains(searchText.toLowerCase()))
+            .filter(product -> product.getName().toLowerCase().contains(searchLower)
+                || (product.getBarcode() != null && product.getBarcode().toLowerCase().contains(searchLower)))
             .toList();
         
         displayProducts(filtered);
+    }
+
+    @FXML
+    public void handleBarcodeScan() {
+        if (availableProducts == null || searchProductField == null) {
+            return;
+        }
+
+        String raw = searchProductField.getText();
+        if (raw == null || raw.trim().isEmpty()) {
+            return;
+        }
+
+        String scanned = raw.trim();
+        Optional<Product> match = availableProducts.stream()
+            .filter(p -> p.getBarcode() != null && p.getBarcode().equalsIgnoreCase(scanned))
+            .findFirst();
+
+        if (match.isPresent()) {
+            addToCart(match.get());
+            posStatusLabel.setText("Scanat și adăugat: " + match.get().getName());
+            searchProductField.clear();
+        } else {
+            posStatusLabel.setText("Cod necunoscut: " + scanned);
+            filterProducts(scanned);
+        }
     }
     
     @FXML
@@ -489,7 +607,11 @@ public class POSController {
     }
     
     private void updateCartSummary() {
-        totalItemsLabel.setText(String.valueOf(cartItems.size()));
+        cartTable.refresh();
+        BigDecimal totalQuantity = cartItems.stream()
+            .map(CartItem::getQuantity)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        totalItemsLabel.setText(totalQuantity.stripTrailingZeros().toPlainString());
         
         cachedCartTotal = cartItems.stream()
             .map(CartItem::getTotal)

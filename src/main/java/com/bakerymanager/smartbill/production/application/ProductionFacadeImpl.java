@@ -58,6 +58,11 @@ public class ProductionFacadeImpl implements ProductionFacade {
     }
 
     @Override
+    public RecipeItem addRecipeProductItem(Long productId, Long sourceProductId, BigDecimal requiredQuantity) {
+        return productionPort.addRecipeProductItem(productId, sourceProductId, requiredQuantity);
+    }
+
+    @Override
     public void removeRecipeItem(Long recipeItemId) {
         productionPort.removeRecipeItem(recipeItemId);
     }

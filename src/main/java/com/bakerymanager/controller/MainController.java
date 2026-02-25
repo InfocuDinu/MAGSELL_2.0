@@ -124,6 +124,17 @@ public class MainController {
     }
     
     @FXML
+    public void showScheduling() {
+        try {
+            loadView("/fxml/scheduling.fxml");
+            statusLabel.setText("Planificator Producție încărcat");
+        } catch (IOException e) {
+            logger.error("Error loading scheduling", e);
+            showError("Eroare la încărcarea modulului de planificare");
+        }
+    }
+    
+    @FXML
     public void showSettings() {
         try {
             loadView("/fxml/settings.fxml");

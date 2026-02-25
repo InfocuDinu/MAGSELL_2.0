@@ -29,6 +29,8 @@ public interface ProductionPort {
 
     RecipeItem addRecipeItem(Long productId, Long ingredientId, BigDecimal requiredQuantity);
 
+    RecipeItem addRecipeProductItem(Long productId, Long sourceProductId, BigDecimal requiredQuantity);
+
     void removeRecipeItem(Long recipeItemId);
 
     boolean canProduce(Long productId, BigDecimal quantity);

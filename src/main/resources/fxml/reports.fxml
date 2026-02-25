@@ -31,11 +31,48 @@
             <Insets top="20" right="20" bottom="20" left="20"/>
         </padding>
         <Label fx:id="reportTitleLabel" text="Selectați un tip de raport" styleClass="label-subtitle"/>
-        
-        <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS">
-            <TextArea fx:id="reportContentArea" editable="false" wrapText="true" 
-                      prefRowCount="25" styleClass="form-text-field"/>
-        </ScrollPane>
+
+        <TabPane fx:id="reportTabPane" VBox.vgrow="ALWAYS">
+            <tabs>
+                <Tab text="Raport Text" closable="false">
+                    <content>
+                        <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS">
+                            <TextArea fx:id="reportContentArea" editable="false" wrapText="true"
+                                      prefRowCount="25" styleClass="form-text-field"/>
+                        </ScrollPane>
+                    </content>
+                </Tab>
+                <Tab text="Raport Financiar (Tabel)" closable="false">
+                    <content>
+                        <SplitPane orientation="VERTICAL" dividerPositions="0.42">
+                            <items>
+                                <VBox spacing="8">
+                                    <Label text="Sumar Financiar" styleClass="label-subtitle"/>
+                                    <TableView fx:id="financialSummaryTable" prefHeight="220">
+                                        <columns>
+                                            <TableColumn fx:id="metricColumn" text="Metric" prefWidth="360"/>
+                                            <TableColumn fx:id="valueColumn" text="Valoare" prefWidth="220"/>
+                                        </columns>
+                                    </TableView>
+                                </VBox>
+                                <VBox spacing="8">
+                                    <Label text="Detaliu pe produs" styleClass="label-subtitle"/>
+                                    <TableView fx:id="financialDetailsTable" prefHeight="280">
+                                        <columns>
+                                            <TableColumn fx:id="detailItemColumn" text="Produs" prefWidth="240"/>
+                                            <TableColumn fx:id="detailRevenueColumn" text="Venit" prefWidth="120"/>
+                                            <TableColumn fx:id="detailCostColumn" text="Cost" prefWidth="120"/>
+                                            <TableColumn fx:id="detailProfitColumn" text="Profit" prefWidth="120"/>
+                                            <TableColumn fx:id="detailMarginColumn" text="Marjă %" prefWidth="100"/>
+                                        </columns>
+                                    </TableView>
+                                </VBox>
+                            </items>
+                        </SplitPane>
+                    </content>
+                </Tab>
+            </tabs>
+        </TabPane>
         
         <HBox spacing="10" alignment="CENTER_RIGHT">
             <Button text="📥 Export PDF" onAction="#exportPDF" styleClass="button, primary"/>

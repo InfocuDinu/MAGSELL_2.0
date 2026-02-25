@@ -45,6 +45,21 @@ public class Product {
     
     @Column(name = "production_date")
     private LocalDate productionDate;
+
+    @Column(name = "yield_percent", precision = 5, scale = 2)
+    private BigDecimal yieldPercent;
+
+    @Column(name = "prep_time_minutes")
+    private Integer prepTimeMinutes;
+
+    @Column(name = "baking_time_minutes")
+    private Integer bakingTimeMinutes;
+
+    @Column(name = "technological_loss_percent", precision = 5, scale = 2)
+    private BigDecimal technologicalLossPercent;
+
+    @Column(name = "vat_rate", precision = 5, scale = 2, nullable = false)
+    private BigDecimal vatRate = new BigDecimal("21");  // 0%, 11%, or 21%
     
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<RecipeItem> recipeItems;
@@ -67,6 +82,18 @@ public class Product {
         }
         if (isActive == null) {
             isActive = true;
+        }
+        if (yieldPercent == null) {
+            yieldPercent = BigDecimal.valueOf(100);
+        }
+        if (prepTimeMinutes == null) {
+            prepTimeMinutes = 0;
+        }
+        if (bakingTimeMinutes == null) {
+            bakingTimeMinutes = 0;
+        }
+        if (technologicalLossPercent == null) {
+            technologicalLossPercent = BigDecimal.ZERO;
         }
     }
     
@@ -131,12 +158,27 @@ public class Product {
     
     public LocalDate getProductionDate() { return productionDate; }
     public void setProductionDate(LocalDate productionDate) { this.productionDate = productionDate; }
+
+    public BigDecimal getYieldPercent() { return yieldPercent; }
+    public void setYieldPercent(BigDecimal yieldPercent) { this.yieldPercent = yieldPercent; }
+
+    public Integer getPrepTimeMinutes() { return prepTimeMinutes; }
+    public void setPrepTimeMinutes(Integer prepTimeMinutes) { this.prepTimeMinutes = prepTimeMinutes; }
+
+    public Integer getBakingTimeMinutes() { return bakingTimeMinutes; }
+    public void setBakingTimeMinutes(Integer bakingTimeMinutes) { this.bakingTimeMinutes = bakingTimeMinutes; }
+
+    public BigDecimal getTechnologicalLossPercent() { return technologicalLossPercent; }
+    public void setTechnologicalLossPercent(BigDecimal technologicalLossPercent) { this.technologicalLossPercent = technologicalLossPercent; }
     
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+
+    public BigDecimal getVatRate() { return vatRate; }
+    public void setVatRate(BigDecimal vatRate) { this.vatRate = vatRate; }
     
     // Helper method to check if product is expired
     public boolean isExpired() {
@@ -148,5 +190,22 @@ public class Product {
         if (expirationDate == null) return false;
         LocalDate threeDaysFromNow = LocalDate.now().plusDays(3);
         return expirationDate.isAfter(LocalDate.now()) && expirationDate.isBefore(threeDaysFromNow);
+    }
+
+    public BigDecimal getEffectiveYieldPercent() {
+        BigDecimal yield = yieldPercent != null ? yieldPercent : BigDecimal.valueOf(100);
+        BigDecimal loss = technologicalLossPercent != null ? technologicalLossPercent : BigDecimal.ZERO;
+        BigDecimal effective = yield.subtract(loss);
+        if (effective.compareTo(BigDecimal.ONE) < 0) {
+            return BigDecimal.ONE;
+        }
+        if (effective.compareTo(BigDecimal.valueOf(100)) > 0) {
+            return BigDecimal.valueOf(100);
+        }
+        return effective;
+    }
+
+    public BigDecimal getInputMultiplierForTargetOutput() {
+        return BigDecimal.valueOf(100).divide(getEffectiveYieldPercent(), 6, java.math.RoundingMode.HALF_UP);
     }
 }

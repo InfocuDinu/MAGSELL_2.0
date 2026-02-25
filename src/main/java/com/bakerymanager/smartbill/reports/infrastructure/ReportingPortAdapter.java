@@ -5,11 +5,13 @@ import com.bakerymanager.entity.Product;
 import com.bakerymanager.entity.IngredientBatch;
 import com.bakerymanager.entity.StockMovement;
 import com.bakerymanager.entity.ProductionConsumption;
+import com.bakerymanager.entity.ProductionReport;
 import com.bakerymanager.entity.SaleItem;
 import com.bakerymanager.entity.RecipeItem;
 import com.bakerymanager.repository.IngredientBatchRepository;
 import com.bakerymanager.repository.StockMovementRepository;
 import com.bakerymanager.repository.ProductionConsumptionRepository;
+import com.bakerymanager.repository.ProductionReportRepository;
 import com.bakerymanager.repository.SaleItemRepository;
 import com.bakerymanager.repository.RecipeItemRepository;
 import com.bakerymanager.service.IngredientService;
@@ -29,6 +31,7 @@ public class ReportingPortAdapter implements ReportingPort {
     private final IngredientBatchRepository ingredientBatchRepository;
     private final StockMovementRepository stockMovementRepository;
     private final ProductionConsumptionRepository productionConsumptionRepository;
+    private final ProductionReportRepository productionReportRepository;
     private final SaleItemRepository saleItemRepository;
     private final RecipeItemRepository recipeItemRepository;
 
@@ -37,6 +40,7 @@ public class ReportingPortAdapter implements ReportingPort {
                                 IngredientBatchRepository ingredientBatchRepository,
                                 StockMovementRepository stockMovementRepository,
                                 ProductionConsumptionRepository productionConsumptionRepository,
+                                ProductionReportRepository productionReportRepository,
                                 SaleItemRepository saleItemRepository,
                                 RecipeItemRepository recipeItemRepository) {
         this.productService = productService;
@@ -44,6 +48,7 @@ public class ReportingPortAdapter implements ReportingPort {
         this.ingredientBatchRepository = ingredientBatchRepository;
         this.stockMovementRepository = stockMovementRepository;
         this.productionConsumptionRepository = productionConsumptionRepository;
+        this.productionReportRepository = productionReportRepository;
         this.saleItemRepository = saleItemRepository;
         this.recipeItemRepository = recipeItemRepository;
     }
@@ -76,6 +81,11 @@ public class ReportingPortAdapter implements ReportingPort {
     @Override
     public List<ProductionConsumption> getProductionConsumptions(LocalDate startDate, LocalDate endDate) {
         return productionConsumptionRepository.findByPlannedDateBetween(startDate, endDate);
+    }
+
+    @Override
+    public List<ProductionReport> getProductionReportsByDateRange(LocalDateTime startDate, LocalDateTime endDate) {
+        return productionReportRepository.findByProductionDateBetween(startDate, endDate);
     }
 
     @Override

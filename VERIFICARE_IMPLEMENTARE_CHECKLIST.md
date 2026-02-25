@@ -7,22 +7,22 @@ Mai jos este statusul real pe fiecare punct, pe baza codului actual:
 - ⚠️ Intrare în stoc pe lot cu expirare + preț (da)
 - ❌ Furnizor pe lot (nu este stocat)
 - ✅ Unități de măsură + conversii (kg↔g, l↔ml, bax↔buc)
-- ⚠️ Documente mișcare stoc:
+- ✅ Documente mișcare stoc:
   - ✅ intrare (NIR), ✅ consum FEFO, ✅ jurnal mișcări
-  - ❌ transfer intern / ajustare / retur furnizor / pierderi-casare
-- ❌ Jurnal auditabil pe utilizator + motiv + timestamp
-- ❌ Inventariere asistată (zone, diferențe, propuneri)
-- ❌ Reaprovizionare inteligentă (punct comandă, listă recomandată)
+  - ✅ transfer intern / ajustare / retur furnizor / pierderi-casare
+- ✅ Jurnal auditabil pe utilizator + motiv + timestamp
+- ✅ Inventariere asistată (zone/depozite, diferențe scriptic/faptic, propuneri ajustare)
+- ✅ Reaprovizionare inteligentă (stoc siguranță + consum mediu/zi + listă “de comandat azi” + export CSV)
 
 ## B) Producție
-- ⚠️ Fișă tehnologică completă
+- ✅ Fișă tehnologică completă
   - ✅ gramaje rețetă
-  - ❌ randament, timp preparare/coacere, pierderi tehnologice
+  - ✅ randament, timp preparare/coacere, pierderi tehnologice
 - ❌ Planificator producție pe schimb/zi + capacități
 - ✅ Ordine de producție (planificat/în lucru/finalizat/anulat)
 - ✅ Consum real vs standard (raport devieri)
-- ❌ Produse semifinite / rețete multi-nivel
-- ❌ Wastage management (rebuturi, pierderi, expirat, donații)
+- ✅ Produse semifinite / rețete multi-nivel (subproduse consumate în alte rețete)
+- ✅ Wastage management (rebuturi, pierderi, expirat, donații) + impact cost/profit
 
 ## C) POS
 - ⚠️ POS rapid (căutare + UI ok)
@@ -91,21 +91,21 @@ Am implementat core-ul funcțional (loturi/FEFO, mișcări, producție, consum s
 2. **Documente mișcare stoc complete**
    - transfer intern, ajustare, retur furnizor, pierderi/casare
    - jurnal cu motiv + utilizator + timestamp
-3. **Wastage management**
+3. **✅ Wastage management (implementat)**
    - tipuri pierderi (rebut, expirat, donație)
    - impact direct în cost/profit
-4. **Inventariere asistată**
+4. **✅ Inventariere asistată (implementat)**
    - zone/depozite
    - diferențe scriptic/faptic
    - propuneri ajustare
-5. **Reaprovizionare inteligentă**
+5. **✅ Reaprovizionare inteligentă (implementată)**
    - stoc de siguranță + consum mediu/zi
-   - listă automată “de comandat azi”
+  - listă automată “de comandat azi” (+ export CSV)
 
 ## Faza 2 (profitabilitate + proces)
-6. **Fișă tehnologică completă**
+6. **✅ Fișă tehnologică completă (implementată)**
    - randament, timp preparare/coacere, pierderi tehnologice
-7. **Produse semifinite / rețete multi‑nivel**
+7. **✅ Produse semifinite / rețete multi‑nivel (implementat)**
    - subproduse (cremă, glazură)
    - consum în alte rețete
 8. **Planificator producție avansat**

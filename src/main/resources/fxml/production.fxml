@@ -23,6 +23,7 @@
                 <Button text="🏭 Producție" onAction="#executeProduction"/>
                 <Button text="📋 Verifică Stoc" onAction="#checkStock"/>
                 <Button text="➕ Produs Nou" onAction="#createNewProduct"/>
+                <Button text="🧪 Fișă Tehnologică" onAction="#editTechnologicalSheet"/>
             </HBox>
             
             <!-- Production Status -->

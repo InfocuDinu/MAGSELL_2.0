@@ -10,7 +10,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -120,6 +122,22 @@ public class WasteService {
     // Get waste by reason in date range
     public List<Waste> getWasteByReasonAndDateRange(Waste.WasteReason reason, LocalDateTime startDate, LocalDateTime endDate) {
         return wasteRepository.findByReasonAndDateRange(reason, startDate, endDate);
+    }
+
+    public Map<Waste.ManagementType, BigDecimal> getWasteCostBreakdownByManagementType(LocalDateTime startDate, LocalDateTime endDate) {
+        Map<Waste.ManagementType, BigDecimal> totals = new EnumMap<>(Waste.ManagementType.class);
+        for (Waste.ManagementType type : Waste.ManagementType.values()) {
+            totals.put(type, BigDecimal.ZERO);
+        }
+
+        List<Waste> wasteEntries = getWasteByDateRange(startDate, endDate);
+        for (Waste waste : wasteEntries) {
+            Waste.ManagementType type = waste.getManagementType();
+            BigDecimal amount = waste.getEstimatedCost() != null ? waste.getEstimatedCost() : BigDecimal.ZERO;
+            totals.put(type, totals.getOrDefault(type, BigDecimal.ZERO).add(amount));
+        }
+
+        return totals;
     }
     
     // Delete waste record

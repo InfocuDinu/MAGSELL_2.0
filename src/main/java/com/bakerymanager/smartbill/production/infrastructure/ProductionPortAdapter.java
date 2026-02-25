@@ -70,6 +70,11 @@ public class ProductionPortAdapter implements ProductionPort {
     }
 
     @Override
+    public RecipeItem addRecipeProductItem(Long productId, Long sourceProductId, BigDecimal requiredQuantity) {
+        return productionService.addRecipeProductItem(productId, sourceProductId, requiredQuantity);
+    }
+
+    @Override
     public void removeRecipeItem(Long recipeItemId) {
         productionService.removeRecipeItem(recipeItemId);
     }

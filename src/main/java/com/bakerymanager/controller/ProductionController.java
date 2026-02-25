@@ -202,6 +202,9 @@ public class ProductionController {
         recipeIngredientColumn.setCellValueFactory(param -> {
             RecipeItem item = param.getValue();
             try {
+                if (item != null && item.getComponentType() == RecipeItem.ComponentType.PRODUCT && item.getSourceProduct() != null) {
+                    return new javafx.beans.property.SimpleStringProperty("[Semifabricat] " + item.getSourceProduct().getName());
+                }
                 if (item != null && item.getIngredient() != null) {
                     return new javafx.beans.property.SimpleStringProperty(item.getIngredient().getName());
                 } else if (item != null && item.getIngredientId() != null) {
@@ -222,6 +225,10 @@ public class ProductionController {
         recipeUnitColumn.setCellValueFactory(param -> {
             RecipeItem item = param.getValue();
             try {
+                if (item != null && item.getComponentType() == RecipeItem.ComponentType.PRODUCT) {
+                    String unit = item.getUnit();
+                    return new javafx.beans.property.SimpleStringProperty(unit != null && !unit.isBlank() ? unit : "BUC");
+                }
                 if (item != null && item.getIngredient() != null) {
                     return new javafx.beans.property.SimpleStringProperty(item.getIngredient().getUnitOfMeasure().getDisplayName());
                 } else if (item != null && item.getIngredientId() != null) {
@@ -239,6 +246,9 @@ public class ProductionController {
         recipeAvailableColumn.setCellValueFactory(param -> {
             RecipeItem item = param.getValue();
             try {
+                if (item != null && item.getComponentType() == RecipeItem.ComponentType.PRODUCT && item.getSourceProduct() != null) {
+                    return new javafx.beans.property.SimpleObjectProperty<>(item.getSourceProduct().getPhysicalStock());
+                }
                 if (item != null && item.getIngredient() != null) {
                     return new javafx.beans.property.SimpleObjectProperty<>(item.getIngredient().getCurrentStock());
                 } else if (item != null && item.getIngredientId() != null) {
@@ -391,6 +401,77 @@ public class ProductionController {
         loadProducts();
         productionStatusLabel.setText("Produse reîncărcate");
     }
+
+    @FXML
+    public void editTechnologicalSheet() {
+        if (selectedProduct == null) {
+            showError("Selectați un produs mai întâi!");
+            return;
+        }
+
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Fișă tehnologică");
+        dialog.setHeaderText("Editare fișă tehnologică: " + selectedProduct.getName());
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(20, 150, 10, 10));
+
+        TextField yieldField = new TextField((selectedProduct.getYieldPercent() != null ? selectedProduct.getYieldPercent() : BigDecimal.valueOf(100)).toPlainString());
+        yieldField.setPromptText("Randament % (0-100)");
+
+        TextField prepTimeField = new TextField(String.valueOf(selectedProduct.getPrepTimeMinutes() != null ? selectedProduct.getPrepTimeMinutes() : 0));
+        prepTimeField.setPromptText("Minute preparare");
+
+        TextField bakingTimeField = new TextField(String.valueOf(selectedProduct.getBakingTimeMinutes() != null ? selectedProduct.getBakingTimeMinutes() : 0));
+        bakingTimeField.setPromptText("Minute coacere");
+
+        TextField techLossField = new TextField((selectedProduct.getTechnologicalLossPercent() != null ? selectedProduct.getTechnologicalLossPercent() : BigDecimal.ZERO).toPlainString());
+        techLossField.setPromptText("Pierderi tehnologice %");
+
+        grid.add(new Label("Randament (%):"), 0, 0);
+        grid.add(yieldField, 1, 0);
+        grid.add(new Label("Timp preparare (min):"), 0, 1);
+        grid.add(prepTimeField, 1, 1);
+        grid.add(new Label("Timp coacere (min):"), 0, 2);
+        grid.add(bakingTimeField, 1, 2);
+        grid.add(new Label("Pierderi tehnologice (%):"), 0, 3);
+        grid.add(techLossField, 1, 3);
+
+        dialog.getDialogPane().setContent(grid);
+
+        dialog.showAndWait().ifPresent(response -> {
+            if (response == ButtonType.OK) {
+                try {
+                    BigDecimal yield = new BigDecimal(yieldField.getText().trim());
+                    Integer prepTime = Integer.parseInt(prepTimeField.getText().trim());
+                    Integer bakingTime = Integer.parseInt(bakingTimeField.getText().trim());
+                    BigDecimal techLoss = new BigDecimal(techLossField.getText().trim());
+
+                    validateTechnologicalSheetValues(yield, prepTime, bakingTime, techLoss);
+
+                    selectedProduct.setYieldPercent(yield);
+                    selectedProduct.setPrepTimeMinutes(prepTime);
+                    selectedProduct.setBakingTimeMinutes(bakingTime);
+                    selectedProduct.setTechnologicalLossPercent(techLoss);
+                    selectedProduct = productionFacade.saveProduct(selectedProduct);
+
+                    loadProducts();
+                    productComboBox.setValue(selectedProduct);
+                    updateProductionInfo();
+                    showSuccessMessage("Fișa tehnologică a fost actualizată cu succes!");
+                } catch (NumberFormatException e) {
+                    showError("Valorile introduse trebuie să fie numere valide!");
+                } catch (IllegalArgumentException e) {
+                    showError(e.getMessage());
+                } catch (Exception e) {
+                    showError("Eroare la salvarea fișei tehnologice: " + e.getMessage());
+                }
+            }
+        });
+    }
     
     @FXML
     public void createNewProduct() {
@@ -436,6 +517,14 @@ public class ProductionController {
         priceField.setPromptText("Preț vânzare (lei)");
         TextField stockField = new TextField();
         stockField.setPromptText("Stoc inițial");
+        TextField yieldField = new TextField("100");
+        yieldField.setPromptText("Randament % (0-100)");
+        TextField prepTimeField = new TextField("0");
+        prepTimeField.setPromptText("Timp preparare (minute)");
+        TextField bakingTimeField = new TextField("0");
+        bakingTimeField.setPromptText("Timp coacere (minute)");
+        TextField techLossField = new TextField("0");
+        techLossField.setPromptText("Pierderi tehnologice %");
         
         // Tabel pentru ingrediente
         TableView<RecipeIngredient> ingredientsTable = new TableView<>();
@@ -484,9 +573,17 @@ public class ProductionController {
         grid.add(priceField, 1, 1);
         grid.add(new Label("Stoc inițial:"), 0, 2);
         grid.add(stockField, 1, 2);
-        grid.add(new Label("Ingrediente:"), 0, 3);
-        grid.add(ingredientsTable, 1, 3);
-        grid.add(addIngredientBtn, 1, 4);
+        grid.add(new Label("Randament (%):"), 0, 3);
+        grid.add(yieldField, 1, 3);
+        grid.add(new Label("Timp preparare (min):"), 0, 4);
+        grid.add(prepTimeField, 1, 4);
+        grid.add(new Label("Timp coacere (min):"), 0, 5);
+        grid.add(bakingTimeField, 1, 5);
+        grid.add(new Label("Pierderi tehnologice (%):"), 0, 6);
+        grid.add(techLossField, 1, 6);
+        grid.add(new Label("Ingrediente:"), 0, 7);
+        grid.add(ingredientsTable, 1, 7);
+        grid.add(addIngredientBtn, 1, 8);
         
         dialog.getDialogPane().setContent(grid);
         
@@ -502,6 +599,12 @@ public class ProductionController {
                     
                     BigDecimal price = new BigDecimal(priceField.getText().trim());
                     BigDecimal stock = new BigDecimal(stockField.getText().trim());
+                    BigDecimal yield = new BigDecimal(yieldField.getText().trim());
+                    Integer prepTime = Integer.parseInt(prepTimeField.getText().trim());
+                    Integer bakingTime = Integer.parseInt(bakingTimeField.getText().trim());
+                    BigDecimal techLoss = new BigDecimal(techLossField.getText().trim());
+
+                    validateTechnologicalSheetValues(yield, prepTime, bakingTime, techLoss);
                     
                     if (ingredients.isEmpty()) {
                         showError("Adăugați cel puțin un ingredient!");
@@ -514,18 +617,29 @@ public class ProductionController {
                     product.setPhysicalStock(stock);
                     product.setMinimumStock(BigDecimal.ZERO);
                     product.setIsActive(true);
+                    product.setYieldPercent(yield);
+                    product.setPrepTimeMinutes(prepTime);
+                    product.setBakingTimeMinutes(bakingTime);
+                    product.setTechnologicalLossPercent(techLoss);
                     
                     // Salvăm produsul mai întâi pentru a obține ID
                     Product savedProduct = productionFacade.saveProduct(product);
                     
                     // Creăm rețeta
                     for (RecipeIngredient ri : ingredients) {
-                        productionFacade.addRecipeItem(savedProduct.getId(), ri.getIngredientId(), ri.getQuantityValue());
+                        if (ri.isProductComponent()) {
+                            productionFacade.addRecipeProductItem(savedProduct.getId(), ri.getSourceProductId(), ri.getQuantityValue());
+                        } else {
+                            productionFacade.addRecipeItem(savedProduct.getId(), ri.getIngredientId(), ri.getQuantityValue());
+                        }
                     }
                     
                     return savedProduct;
                 } catch (NumberFormatException e) {
-                    showError("Prețul și stocul trebuie să fie numere valide!");
+                    showError("Prețul, stocul și fișa tehnologică trebuie să fie valori numerice valide!");
+                    return null;
+                } catch (IllegalArgumentException e) {
+                    showError(e.getMessage());
                     return null;
                 } catch (Exception e) {
                     showError("Eroare la salvare: " + e.getMessage());
@@ -540,8 +654,8 @@ public class ProductionController {
     
     private RecipeIngredient showIngredientDialog() {
         Dialog<RecipeIngredient> dialog = new Dialog<>();
-        dialog.setTitle("Ingredient Rețetă");
-        dialog.setHeaderText("Adăugați ingredient în rețetă");
+        dialog.setTitle("Componentă Rețetă");
+        dialog.setHeaderText("Adăugați ingredient sau semifabricat în rețetă");
         
         ButtonType okButtonType = new ButtonType("Adaugă", ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(okButtonType, ButtonType.CANCEL);
@@ -550,6 +664,10 @@ public class ProductionController {
         grid.setHgap(10);
         grid.setVgap(10);
         grid.setPadding(new Insets(20, 150, 10, 10));
+
+        ComboBox<String> componentTypeCombo = new ComboBox<>();
+        componentTypeCombo.setItems(FXCollections.observableArrayList("Ingredient", "Semifabricat"));
+        componentTypeCombo.setValue("Ingredient");
         
         ComboBox<Ingredient> ingredientCombo = new ComboBox<>();
         List<Ingredient> ingredients = productionFacade.getAllIngredients();
@@ -559,6 +677,35 @@ public class ProductionController {
         }
         ingredientCombo.setItems(FXCollections.observableArrayList(ingredients));
         ingredientCombo.setPromptText("Selectați ingredient");
+
+        ComboBox<Product> productCombo = new ComboBox<>();
+        productCombo.setItems(FXCollections.observableArrayList(productionFacade.getActiveProducts()));
+        productCombo.setPromptText("Selectați semifabricat");
+        productCombo.setVisible(false);
+        productCombo.setManaged(false);
+
+        productCombo.setConverter(new javafx.util.StringConverter<Product>() {
+            @Override
+            public String toString(Product product) {
+                return product != null ? product.getName() : "";
+            }
+
+            @Override
+            public Product fromString(String string) {
+                return productionFacade.getActiveProducts().stream()
+                    .filter(p -> p.getName().equals(string))
+                    .findFirst()
+                    .orElse(null);
+            }
+        });
+
+        componentTypeCombo.valueProperty().addListener((obs, oldVal, newVal) -> {
+            boolean ingredientSelected = "Ingredient".equals(newVal);
+            ingredientCombo.setVisible(ingredientSelected);
+            ingredientCombo.setManaged(ingredientSelected);
+            productCombo.setVisible(!ingredientSelected);
+            productCombo.setManaged(!ingredientSelected);
+        });
         
         // Setăm cum să afișăm ingredientele în ComboBox
         ingredientCombo.setConverter(new javafx.util.StringConverter<Ingredient>() {
@@ -580,29 +727,42 @@ public class ProductionController {
         TextField quantityField = new TextField();
         quantityField.setPromptText("Cantitate necesară");
         
-        grid.add(new Label("Ingredient:"), 0, 0);
-        grid.add(ingredientCombo, 1, 0);
-        grid.add(new Label("Cantitate:"), 0, 1);
-        grid.add(quantityField, 1, 1);
+        grid.add(new Label("Tip componentă:"), 0, 0);
+        grid.add(componentTypeCombo, 1, 0);
+        grid.add(new Label("Ingredient:"), 0, 1);
+        grid.add(ingredientCombo, 1, 1);
+        grid.add(new Label("Semifabricat:"), 0, 2);
+        grid.add(productCombo, 1, 2);
+        grid.add(new Label("Cantitate:"), 0, 3);
+        grid.add(quantityField, 1, 3);
         
         dialog.getDialogPane().setContent(grid);
         
         dialog.setResultConverter(dialogButton -> {
             if (dialogButton == okButtonType) {
-                Ingredient ingredient = ingredientCombo.getValue();
                 String quantity = quantityField.getText().trim();
-                
-                if (ingredient == null) {
-                    showError("Selectați un ingredient!");
-                    return null;
-                }
                 
                 if (quantity.isEmpty()) {
                     showError("Introduceți cantitatea!");
                     return null;
                 }
-                
-                return new RecipeIngredient(ingredient.getId(), ingredient.getName(), quantity, ingredient.getUnitOfMeasure().getDisplayName());
+
+                if ("Semifabricat".equals(componentTypeCombo.getValue())) {
+                    Product sourceProduct = productCombo.getValue();
+                    if (sourceProduct == null) {
+                        showError("Selectați un semifabricat!");
+                        return null;
+                    }
+                    return RecipeIngredient.forProduct(sourceProduct.getId(), sourceProduct.getName(), quantity);
+                }
+
+                Ingredient ingredient = ingredientCombo.getValue();
+                if (ingredient == null) {
+                    showError("Selectați un ingredient!");
+                    return null;
+                }
+
+                return RecipeIngredient.forIngredient(ingredient.getId(), ingredient.getName(), quantity, ingredient.getUnitOfMeasure().getDisplayName());
             }
             return null;
         });
@@ -612,19 +772,32 @@ public class ProductionController {
     
     // Clasă internă pentru ingredient în rețetă
     private static class RecipeIngredient {
+        private final RecipeItem.ComponentType componentType;
         private final Long ingredientId;
+        private final Long sourceProductId;
         private final String name;
         private final String quantity;
         private final String unit;
         
-        public RecipeIngredient(Long ingredientId, String name, String quantity, String unit) {
+        private RecipeIngredient(RecipeItem.ComponentType componentType, Long ingredientId, Long sourceProductId, String name, String quantity, String unit) {
+            this.componentType = componentType;
             this.ingredientId = ingredientId;
+            this.sourceProductId = sourceProductId;
             this.name = name;
             this.quantity = quantity;
             this.unit = unit;
         }
+
+        public static RecipeIngredient forIngredient(Long ingredientId, String name, String quantity, String unit) {
+            return new RecipeIngredient(RecipeItem.ComponentType.INGREDIENT, ingredientId, null, name, quantity, unit);
+        }
+
+        public static RecipeIngredient forProduct(Long sourceProductId, String name, String quantity) {
+            return new RecipeIngredient(RecipeItem.ComponentType.PRODUCT, null, sourceProductId, name, quantity, "BUC");
+        }
         
         public Long getIngredientId() { return ingredientId; }
+        public Long getSourceProductId() { return sourceProductId; }
         public String getName() { return name; }
         public String getQuantity() { return quantity; }
         public BigDecimal getQuantityValue() { 
@@ -635,6 +808,7 @@ public class ProductionController {
             }
         }
         public String getUnit() { return unit; }
+        public boolean isProductComponent() { return componentType == RecipeItem.ComponentType.PRODUCT; }
     }
     
     @FXML
@@ -760,9 +934,13 @@ public class ProductionController {
         
         Dialog<RecipeItemData> dialog = createRecipeItemDialog();
         dialog.showAndWait().ifPresent(data -> {
-            productionFacade.addRecipeItem(selectedProduct.getId(), data.ingredientId, data.quantity);
+            if (data.isProductComponent()) {
+                productionFacade.addRecipeProductItem(selectedProduct.getId(), data.sourceProductId, data.quantity);
+            } else {
+                productionFacade.addRecipeItem(selectedProduct.getId(), data.ingredientId, data.quantity);
+            }
             loadRecipe();
-            showSuccessMessage("Ingredient adăugat la rețetă!");
+            showSuccessMessage("Componentă adăugată la rețetă!");
         });
     }
     
@@ -788,7 +966,13 @@ public class ProductionController {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle("Confirmare Ștergere");
         alert.setHeaderText("Ștergeți acest ingredient din rețetă?");
-        alert.setContentText("Ingredient: " + (item.getIngredient() != null ? item.getIngredient().getName() : ""));
+        String componentName;
+        if (item.getComponentType() == RecipeItem.ComponentType.PRODUCT) {
+            componentName = item.getSourceProduct() != null ? item.getSourceProduct().getName() : "Semifabricat";
+        } else {
+            componentName = item.getIngredient() != null ? item.getIngredient().getName() : "Ingredient";
+        }
+        alert.setContentText("Componentă: " + componentName);
         
         if (alert.showAndWait().get() == ButtonType.OK) {
             productionFacade.removeRecipeItem(item.getId());
@@ -828,16 +1012,35 @@ public class ProductionController {
         if (selectedProduct != null) {
             productionInfoLabel.setText(
                 "Produs selectat: " + selectedProduct.getName() + 
-                " | Stoc curent: " + selectedProduct.getPhysicalStock()
+                " | Stoc curent: " + selectedProduct.getPhysicalStock() +
+                " | Randament: " + (selectedProduct.getYieldPercent() != null ? selectedProduct.getYieldPercent() : BigDecimal.valueOf(100)) + "%" +
+                " | Preparare: " + (selectedProduct.getPrepTimeMinutes() != null ? selectedProduct.getPrepTimeMinutes() : 0) + " min" +
+                " | Coacere: " + (selectedProduct.getBakingTimeMinutes() != null ? selectedProduct.getBakingTimeMinutes() : 0) + " min" +
+                " | Pierderi: " + (selectedProduct.getTechnologicalLossPercent() != null ? selectedProduct.getTechnologicalLossPercent() : BigDecimal.ZERO) + "%"
             );
         } else {
             productionInfoLabel.setText("Selectați un produs pentru a începe producția");
         }
     }
+
+    private void validateTechnologicalSheetValues(BigDecimal yield, Integer prepTime, Integer bakingTime, BigDecimal techLoss) {
+        if (yield.compareTo(BigDecimal.ZERO) <= 0 || yield.compareTo(BigDecimal.valueOf(100)) > 0) {
+            throw new IllegalArgumentException("Randamentul trebuie să fie între 0 și 100.");
+        }
+        if (prepTime < 0 || bakingTime < 0) {
+            throw new IllegalArgumentException("Timpul de preparare/coacere nu poate fi negativ.");
+        }
+        if (techLoss.compareTo(BigDecimal.ZERO) < 0 || techLoss.compareTo(BigDecimal.valueOf(100)) >= 0) {
+            throw new IllegalArgumentException("Pierderile tehnologice trebuie să fie între 0 și 99.99.");
+        }
+        if (yield.subtract(techLoss).compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Randamentul minus pierderile tehnologice trebuie să fie mai mare decât 0.");
+        }
+    }
     
     private Dialog<RecipeItemData> createRecipeItemDialog() {
         Dialog<RecipeItemData> dialog = new Dialog<>();
-        dialog.setTitle("Adaugă Ingredient la Rețetă");
+        dialog.setTitle("Adaugă Componentă la Rețetă");
         dialog.setHeaderText(null);
         
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
@@ -846,6 +1049,10 @@ public class ProductionController {
         grid.setHgap(10);
         grid.setVgap(10);
         grid.setPadding(new javafx.geometry.Insets(20, 150, 10, 10));
+
+        ComboBox<String> componentTypeCombo = new ComboBox<>();
+        componentTypeCombo.setItems(FXCollections.observableArrayList("Ingredient", "Semifabricat"));
+        componentTypeCombo.setValue("Ingredient");
         
         ComboBox<Ingredient> ingredientCombo = new ComboBox<>();
         List<Ingredient> ingredients = productionFacade.getAllIngredients();
@@ -854,6 +1061,26 @@ public class ProductionController {
             logger.debug("Ingredient: {} (Stock: {})", ing.getName(), ing.getCurrentStock());
         }
         ingredientCombo.setItems(FXCollections.observableArrayList(ingredients));
+
+        ComboBox<Product> productCombo = new ComboBox<>();
+        productCombo.setItems(FXCollections.observableArrayList(productionFacade.getActiveProducts()));
+        productCombo.setVisible(false);
+        productCombo.setManaged(false);
+
+        productCombo.setConverter(new javafx.util.StringConverter<Product>() {
+            @Override
+            public String toString(Product product) {
+                return product != null ? product.getName() : "";
+            }
+
+            @Override
+            public Product fromString(String string) {
+                return productionFacade.getActiveProducts().stream()
+                    .filter(p -> p.getName().equals(string))
+                    .findFirst()
+                    .orElse(null);
+            }
+        });
         
         // Setăm cum să afișăm ingredientele în ComboBox
         ingredientCombo.setConverter(new javafx.util.StringConverter<Ingredient>() {
@@ -874,25 +1101,54 @@ public class ProductionController {
         
         TextField quantityField = new TextField();
         quantityField.setPromptText("Cantitate necesară per unitate de produs");
+
+        componentTypeCombo.valueProperty().addListener((obs, oldVal, newVal) -> {
+            boolean ingredientSelected = "Ingredient".equals(newVal);
+            ingredientCombo.setVisible(ingredientSelected);
+            ingredientCombo.setManaged(ingredientSelected);
+            productCombo.setVisible(!ingredientSelected);
+            productCombo.setManaged(!ingredientSelected);
+        });
         
-        grid.add(new Label("Ingredient:"), 0, 0);
-        grid.add(ingredientCombo, 1, 0);
-        grid.add(new Label("Cantitate:"), 0, 1);
-        grid.add(quantityField, 1, 1);
+        grid.add(new Label("Tip componentă:"), 0, 0);
+        grid.add(componentTypeCombo, 1, 0);
+        grid.add(new Label("Ingredient:"), 0, 1);
+        grid.add(ingredientCombo, 1, 1);
+        grid.add(new Label("Semifabricat:"), 0, 2);
+        grid.add(productCombo, 1, 2);
+        grid.add(new Label("Cantitate:"), 0, 3);
+        grid.add(quantityField, 1, 3);
         
         dialog.getDialogPane().setContent(grid);
         
         dialog.setResultConverter(dialogButton -> {
             if (dialogButton == ButtonType.OK) {
-                Ingredient ingredient = ingredientCombo.getValue();
-                if (ingredient == null) {
-                    showError("Selectați un ingredient!");
-                    return null;
-                }
-                
                 try {
-                    BigDecimal quantity = new BigDecimal(quantityField.getText());
-                    return new RecipeItemData(ingredient.getId(), quantity);
+                    BigDecimal quantity = new BigDecimal(quantityField.getText().trim());
+                    if (quantity.compareTo(BigDecimal.ZERO) <= 0) {
+                        showError("Cantitatea trebuie să fie mai mare decât 0!");
+                        return null;
+                    }
+
+                    if ("Semifabricat".equals(componentTypeCombo.getValue())) {
+                        Product sourceProduct = productCombo.getValue();
+                        if (sourceProduct == null) {
+                            showError("Selectați un semifabricat!");
+                            return null;
+                        }
+                        if (selectedProduct != null && selectedProduct.getId().equals(sourceProduct.getId())) {
+                            showError("Produsul nu se poate consuma pe sine în rețetă!");
+                            return null;
+                        }
+                        return new RecipeItemData(null, sourceProduct.getId(), quantity);
+                    }
+
+                    Ingredient ingredient = ingredientCombo.getValue();
+                    if (ingredient == null) {
+                        showError("Selectați un ingredient!");
+                        return null;
+                    }
+                    return new RecipeItemData(ingredient.getId(), null, quantity);
                 } catch (NumberFormatException e) {
                     showError("Cantitate invalidă!");
                     return null;
@@ -906,11 +1162,17 @@ public class ProductionController {
     
     private static class RecipeItemData {
         Long ingredientId;
+        Long sourceProductId;
         BigDecimal quantity;
         
-        public RecipeItemData(Long ingredientId, BigDecimal quantity) {
+        public RecipeItemData(Long ingredientId, Long sourceProductId, BigDecimal quantity) {
             this.ingredientId = ingredientId;
+            this.sourceProductId = sourceProductId;
             this.quantity = quantity;
+        }
+
+        boolean isProductComponent() {
+            return sourceProductId != null;
         }
     }
     

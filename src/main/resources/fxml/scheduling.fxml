@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<AnchorPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.bakerymanager.controller.SchedulingController"
+            style="-fx-font-family: 'Segoe UI';
+                   -fx-font-size: 11;">
+    
+    <VBox AnchorPane.topAnchor="0" AnchorPane.leftAnchor="0" AnchorPane.rightAnchor="0" AnchorPane.bottomAnchor="0"
+          spacing="10" style="-fx-padding: 15; -fx-fill: white;">
+        
+        <!-- Header -->
+        <HBox spacing="20" style="-fx-padding: 10; -fx-border-color: #cccccc; -fx-border-width: 0 0 1 0;">
+            <Label text="Planificator Producție - Schimburi și Capacități" style="-fx-font-size: 16; -fx-font-weight: bold;"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Label fx:id="utilizationLabel" text="Utilizare: 0%"/>
+        </HBox>
+        
+        <!-- Split Pane -->
+        <SplitPane dividerPositions="0.4" VBox.vgrow="ALWAYS">
+            
+            <!-- Left: Shift Management -->
+            <VBox spacing="10" style="-fx-border-color: #e0e0e0; -fx-border-width: 0 1 0 0; -fx-padding: 10;">
+                
+                <Label text="Administrare Schimburi" style="-fx-font-size: 14; -fx-font-weight: bold;"/>
+                <Separator/>
+                
+                <!-- Shift Form -->
+                <TitledPane text="Adăugare Schimb Nou" collapsible="true" expanded="true">
+                    <VBox spacing="8" style="-fx-padding: 10;">
+                        
+                        <!-- Nume Schimb -->
+                        <HBox spacing="5" alignment="CENTER_LEFT">
+                            <Label text="Nume schimb:" minWidth="120"/>
+                            <TextField fx:id="shiftNameField" style="-fx-min-width: 150;"/>
+                        </HBox>
+                        
+                        <!-- Data și Orar -->
+                        <HBox spacing="10" alignment="CENTER_LEFT">
+                            <Label text="Data:" minWidth="120"/>
+                            <DatePicker fx:id="shiftDatePicker"/>
+                            
+                            <Label text="Oră start:" minWidth="80"/>
+                            <Spinner fx:id="shiftStartHourSpinner" style="-fx-pref-width: 60;"/>
+                            <Label text=":"/>
+                            <Spinner fx:id="shiftStartMinuteSpinner" style="-fx-pref-width: 60;"/>
+                            
+                            <Label text="Oră final:" minWidth="80"/>
+                            <Spinner fx:id="shiftEndHourSpinner" style="-fx-pref-width: 60;"/>
+                            <Label text=":"/>
+                            <Spinner fx:id="shiftEndMinuteSpinner" style="-fx-pref-width: 60;"/>
+                        </HBox>
+                        
+                        <!-- Resursă -->
+                        <HBox spacing="5" alignment="CENTER_LEFT">
+                            <Label text="Tip resursă:" minWidth="120"/>
+                            <ComboBox fx:id="resourceTypeCombo" style="-fx-pref-width: 150;"/>
+                            <Label text="ID resursă:" minWidth="80"/>
+                            <TextField fx:id="resourceIdField" promptText="e.g., OVEN_1" style="-fx-pref-width: 100;"/>
+                        </HBox>
+                        
+                        <!-- Capacitate -->
+                        <HBox spacing="5" alignment="CENTER_LEFT">
+                            <Label text="Capacitate (unități):" minWidth="120"/>
+                            <TextField fx:id="capacityUnitsField" text="100" style="-fx-pref-width: 80;"/>
+                        </HBox>
+                        
+                        <!-- Create Button -->
+                        <Button text="Creare Schimb" style="-fx-font-size: 11; -fx-padding: 5 20;"/>
+                    </VBox>
+                </TitledPane>
+                
+                <!-- Shifts Table -->
+                <Label text="Schimburi active:" style="-fx-font-weight: bold;"/>
+                <TableView fx:id="shiftsTable" VBox.vgrow="ALWAYS" style="-fx-font-size: 10;">
+                    <columns>
+                        <TableColumn text="Nume" prefWidth="100"/>
+                        <TableColumn text="Resursă" prefWidth="120"/>
+                        <TableColumn text="Interval" prefWidth="150"/>
+                        <TableColumn text="Capacitate" prefWidth="100"/>
+                        <TableColumn text="Status" prefWidth="80"/>
+                    </columns>
+                </TableView>
+            </VBox>
+            
+            <!-- Right: Schedule Overview -->
+            <VBox spacing="10" style="-fx-padding: 10;">
+                
+                <Label text="Plan de Producție" style="-fx-font-size: 14; -fx-font-weight: bold;"/>
+                <Separator/>
+                
+                <!-- Date Range -->
+                <HBox spacing="10" alignment="CENTER_LEFT">
+                    <Label text="De la:"/>
+                    <DatePicker style="-fx-pref-width: 120;"/>
+                    <Label text="Până la:"/>
+                    <DatePicker style="-fx-pref-width: 120;"/>
+                    <Button text="Reîncărcare"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                </HBox>
+                
+                <!-- Utilization -->
+                <HBox spacing="10" style="-fx-border-color: #e0e0e0; -fx-border-width: 1; -fx-padding: 10; -fx-alignment: CENTER_LEFT;">
+                    <Label fx:id="utilizationLabel" text="Utilizare: 0%"/>
+                    <ProgressBar fx:id="utilizationBar" style="-fx-pref-width: 200;"/>
+                </HBox>
+                
+                <!-- Schedule Entries Table -->
+                <Label text="Intrări planificate:" style="-fx-font-weight: bold;"/>
+                <TableView fx:id="scheduleTable" VBox.vgrow="ALWAYS" style="-fx-font-size: 10;">
+                    <columns>
+                        <TableColumn text="Produs" prefWidth="100"/>
+                        <TableColumn text="Cantitate" prefWidth="80"/>
+                        <TableColumn text="Schimb" prefWidth="100"/>
+                        <TableColumn text="Status" prefWidth="80"/>
+                        <TableColumn text="Prioritate" prefWidth="70"/>
+                    </columns>
+                </TableView>
+            </VBox>
+        </SplitPane>
+    </VBox>
+</AnchorPane>

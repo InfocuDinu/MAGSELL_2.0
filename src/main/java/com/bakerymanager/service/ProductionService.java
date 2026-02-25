@@ -18,9 +18,12 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.LocalDate;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -126,10 +129,11 @@ public class ProductionService {
 
         Product product = line.getProduct();
         BigDecimal plannedQuantity = line.getPlannedQuantity();
+        BigDecimal adjustedInputQuantity = adjustForTechnologicalSheet(product, plannedQuantity);
         List<RecipeItem> recipeItems = recipeItemRepository.findByProductWithIngredient(product);
 
         for (RecipeItem recipeItem : recipeItems) {
-            BigDecimal standardQuantity = toIngredientUnit(recipeItem, recipeItem.getTotalRequiredQuantity(plannedQuantity));
+            BigDecimal standardQuantity = toIngredientUnit(recipeItem, recipeItem.getTotalRequiredQuantity(adjustedInputQuantity));
             ProductionConsumption consumption = new ProductionConsumption();
             consumption.setProductionOrderLine(line);
             consumption.setIngredient(recipeItem.getIngredient());
@@ -179,6 +183,8 @@ public class ProductionService {
             if (item.getUnit() == null || item.getUnit().isBlank()) {
                 item.setUnit(defaultUnit);
             }
+            item.setComponentType(RecipeItem.ComponentType.INGREDIENT);
+            item.setSourceProduct(null);
             return recipeItemRepository.save(item);
         } else {
             RecipeItem newItem = new RecipeItem();
@@ -186,8 +192,48 @@ public class ProductionService {
             newItem.setIngredient(ingredient);
             newItem.setRequiredQuantity(requiredQuantity);
             newItem.setUnit(defaultUnit);
+            newItem.setComponentType(RecipeItem.ComponentType.INGREDIENT);
             return recipeItemRepository.save(newItem);
         }
+    }
+
+    public RecipeItem addRecipeProductItem(Long productId, Long sourceProductId, BigDecimal requiredQuantity) {
+        Product product = productService.getProductById(productId)
+            .orElseThrow(() -> new RuntimeException("Product not found: " + productId));
+        Product sourceProduct = productService.getProductById(sourceProductId)
+            .orElseThrow(() -> new RuntimeException("Source product not found: " + sourceProductId));
+
+        if (product.getId().equals(sourceProduct.getId())) {
+            throw new RuntimeException("Un produs nu se poate consuma pe sine în rețetă.");
+        }
+        if (requiredQuantity == null || requiredQuantity.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new RuntimeException("Cantitatea pentru semifabricat trebuie să fie > 0.");
+        }
+
+        List<RecipeItem> existingRecipe = recipeItemRepository.findByProductWithIngredient(product);
+        Optional<RecipeItem> existingItem = existingRecipe.stream()
+            .filter(item -> item.getComponentType() == RecipeItem.ComponentType.PRODUCT
+                && item.getSourceProduct() != null
+                && item.getSourceProduct().getId().equals(sourceProductId))
+            .findFirst();
+
+        if (existingItem.isPresent()) {
+            RecipeItem item = existingItem.get();
+            item.setRequiredQuantity(requiredQuantity);
+            if (item.getUnit() == null || item.getUnit().isBlank()) {
+                item.setUnit("BUC");
+            }
+            return recipeItemRepository.save(item);
+        }
+
+        RecipeItem newItem = new RecipeItem();
+        newItem.setProduct(product);
+        newItem.setComponentType(RecipeItem.ComponentType.PRODUCT);
+        newItem.setSourceProduct(sourceProduct);
+        newItem.setIngredient(null);
+        newItem.setRequiredQuantity(requiredQuantity);
+        newItem.setUnit("BUC");
+        return recipeItemRepository.save(newItem);
     }
     
     public void removeRecipeItem(Long recipeItemId) {
@@ -205,55 +251,7 @@ public class ProductionService {
     }
     
     public void executeProduction(Long productId, BigDecimal quantity) {
-        Product product = productService.getProductById(productId)
-            .orElseThrow(() -> new RuntimeException("Product not found: " + productId));
-        
-        List<RecipeItem> recipeItems = recipeItemRepository.findByProductWithIngredient(product);
-        if (recipeItems.isEmpty()) {
-            throw new RuntimeException("No recipe defined for product: " + product.getName());
-        }
-        
-        Map<Long, BigDecimal> requiredIngredients = recipeItems.stream()
-            .collect(Collectors.toMap(
-                item -> item.getIngredient().getId(),
-                item -> toIngredientUnit(item, item.getTotalRequiredQuantity(quantity))
-            ));
-        
-        // Verify all ingredients have sufficient stock first (atomic check)
-        for (Map.Entry<Long, BigDecimal> entry : requiredIngredients.entrySet()) {
-            if (!ingredientService.hasSufficientStock(entry.getKey(), entry.getValue())) {
-                Ingredient ingredient = ingredientService.getIngredientById(entry.getKey()).get();
-                throw new RuntimeException("Insufficient stock for ingredient: " + ingredient.getName() + 
-                    ". Required: " + entry.getValue() + ", Available: " + ingredient.getCurrentStock());
-            }
-        }
-        
-        // All checks passed, now remove stock from all ingredients
-        for (Map.Entry<Long, BigDecimal> entry : requiredIngredients.entrySet()) {
-            Ingredient ingredient = ingredientService.getIngredientById(entry.getKey()).orElse(null);
-            if (ingredient == null) {
-                throw new RuntimeException("Ingredient not found: " + entry.getKey());
-            }
-            ingredientService.removeStock(entry.getKey(), entry.getValue());
-            stockService.consumeFefo(
-                ingredient,
-                entry.getValue(),
-                ingredient.getUnitOfMeasure() != null ? ingredient.getUnitOfMeasure().name() : null,
-                "PRODUCTION",
-                productId
-            );
-        }
-        
-        // Add product stock
-        productService.addStock(productId, quantity);
-        
-        // Create production report
-        ProductionReport report = new ProductionReport();
-        report.setProduct(product);
-        report.setQuantityProduced(quantity);
-        report.setProductionDate(LocalDateTime.now());
-        report.setStatus(ProductionReport.ProductionStatus.COMPLETED);
-        productionReportRepository.save(report);
+        executeProductionInternal(productId, quantity, new HashSet<>());
     }
     
     public List<ProductionReport> getAllProductionReports() {
@@ -296,27 +294,178 @@ public class ProductionService {
     public Map<Ingredient, BigDecimal> calculateRequiredIngredients(Long productId, BigDecimal quantity) {
         Product product = productService.getProductById(productId)
             .orElseThrow(() -> new RuntimeException("Product not found: " + productId));
-        
-        List<RecipeItem> recipeItems = recipeItemRepository.findByProductWithIngredient(product);
-        
-        return recipeItems.stream()
+        Map<Long, BigDecimal> ingredientRequirements = new HashMap<>();
+        Map<Long, BigDecimal> virtualProductStocks = new HashMap<>();
+        collectIngredientRequirements(product, quantity, new HashSet<>(), ingredientRequirements, virtualProductStocks);
+
+        return ingredientRequirements.entrySet().stream()
             .collect(Collectors.toMap(
-                RecipeItem::getIngredient,
-                item -> toIngredientUnit(item, item.getTotalRequiredQuantity(quantity))
+                entry -> ingredientService.getIngredientById(entry.getKey())
+                    .orElseThrow(() -> new RuntimeException("Ingredient not found: " + entry.getKey())),
+                Map.Entry::getValue
             ));
+    }
+
+    private BigDecimal adjustForTechnologicalSheet(Product product, BigDecimal targetOutputQuantity) {
+        if (targetOutputQuantity == null) {
+            return BigDecimal.ZERO;
+        }
+        if (product == null) {
+            return targetOutputQuantity;
+        }
+        BigDecimal multiplier = product.getInputMultiplierForTargetOutput();
+        return targetOutputQuantity.multiply(multiplier);
     }
     
     public boolean canProduce(Long productId, BigDecimal quantity) {
         try {
-            Map<Ingredient, BigDecimal> requiredIngredients = calculateRequiredIngredients(productId, quantity);
-            for (Map.Entry<Ingredient, BigDecimal> entry : requiredIngredients.entrySet()) {
-                if (!ingredientService.hasSufficientStock(entry.getKey().getId(), entry.getValue())) {
+            Map<Long, BigDecimal> ingredientRequirements = new HashMap<>();
+            Map<Long, BigDecimal> virtualProductStocks = new HashMap<>();
+            Product product = productService.getProductById(productId)
+                .orElseThrow(() -> new RuntimeException("Product not found: " + productId));
+
+            collectIngredientRequirements(product, quantity, new HashSet<>(), ingredientRequirements, virtualProductStocks);
+
+            for (Map.Entry<Long, BigDecimal> entry : ingredientRequirements.entrySet()) {
+                if (!ingredientService.hasSufficientStock(entry.getKey(), entry.getValue())) {
                     return false;
                 }
             }
             return true;
         } catch (Exception e) {
             return false;
+        }
+    }
+
+    private void executeProductionInternal(Long productId, BigDecimal quantity, Set<Long> processingPath) {
+        if (quantity == null || quantity.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new RuntimeException("Quantity must be greater than 0");
+        }
+        if (processingPath.contains(productId)) {
+            throw new RuntimeException("Rețetă circulară detectată pentru produsul ID: " + productId);
+        }
+
+        processingPath.add(productId);
+        try {
+            Product product = productService.getProductById(productId)
+                .orElseThrow(() -> new RuntimeException("Product not found: " + productId));
+            BigDecimal adjustedInputQuantity = adjustForTechnologicalSheet(product, quantity);
+
+            List<RecipeItem> recipeItems = recipeItemRepository.findByProductWithIngredient(product);
+            if (recipeItems.isEmpty()) {
+                throw new RuntimeException("No recipe defined for product: " + product.getName());
+            }
+
+            // 1) Handle semifinished product components (produce deficit recursively, then consume)
+            for (RecipeItem item : recipeItems) {
+                if (item.getComponentType() == RecipeItem.ComponentType.PRODUCT && item.getSourceProduct() != null) {
+                    Product sourceProduct = item.getSourceProduct();
+                    BigDecimal needed = item.getTotalRequiredQuantity(adjustedInputQuantity);
+                    BigDecimal available = sourceProduct.getPhysicalStock() != null ? sourceProduct.getPhysicalStock() : BigDecimal.ZERO;
+
+                    if (available.compareTo(needed) < 0) {
+                        BigDecimal deficit = needed.subtract(available);
+                        executeProductionInternal(sourceProduct.getId(), deficit, processingPath);
+                    }
+                    productService.removeStock(sourceProduct.getId(), needed);
+                }
+            }
+
+            // 2) Aggregate and validate raw ingredient requirements
+            Map<Long, BigDecimal> requiredIngredients = new HashMap<>();
+            for (RecipeItem item : recipeItems) {
+                if (item.getComponentType() == RecipeItem.ComponentType.INGREDIENT && item.getIngredient() != null) {
+                    BigDecimal required = toIngredientUnit(item, item.getTotalRequiredQuantity(adjustedInputQuantity));
+                    requiredIngredients.merge(item.getIngredient().getId(), required, BigDecimal::add);
+                }
+            }
+
+            for (Map.Entry<Long, BigDecimal> entry : requiredIngredients.entrySet()) {
+                if (!ingredientService.hasSufficientStock(entry.getKey(), entry.getValue())) {
+                    Ingredient ingredient = ingredientService.getIngredientById(entry.getKey()).orElse(null);
+                    throw new RuntimeException("Insufficient stock for ingredient: " + (ingredient != null ? ingredient.getName() : entry.getKey()) +
+                        ". Required: " + entry.getValue());
+                }
+            }
+
+            // 3) Consume ingredients FEFO
+            for (Map.Entry<Long, BigDecimal> entry : requiredIngredients.entrySet()) {
+                Ingredient ingredient = ingredientService.getIngredientById(entry.getKey())
+                    .orElseThrow(() -> new RuntimeException("Ingredient not found: " + entry.getKey()));
+                ingredientService.removeStock(entry.getKey(), entry.getValue());
+                stockService.consumeFefo(
+                    ingredient,
+                    entry.getValue(),
+                    ingredient.getUnitOfMeasure() != null ? ingredient.getUnitOfMeasure().name() : null,
+                    "PRODUCTION",
+                    productId
+                );
+            }
+
+            // 4) Increase finished product stock
+            productService.addStock(productId, quantity);
+
+            // 5) Save production report
+            ProductionReport report = new ProductionReport();
+            report.setProduct(product);
+            report.setQuantityProduced(quantity);
+            report.setProductionDate(LocalDateTime.now());
+            report.setStatus(ProductionReport.ProductionStatus.COMPLETED);
+            productionReportRepository.save(report);
+        } finally {
+            processingPath.remove(productId);
+        }
+    }
+
+    private void collectIngredientRequirements(
+        Product product,
+        BigDecimal targetOutputQuantity,
+        Set<Long> processingPath,
+        Map<Long, BigDecimal> ingredientRequirements,
+        Map<Long, BigDecimal> virtualProductStocks
+    ) {
+        if (product == null || targetOutputQuantity == null || targetOutputQuantity.compareTo(BigDecimal.ZERO) <= 0) {
+            return;
+        }
+        if (processingPath.contains(product.getId())) {
+            throw new RuntimeException("Rețetă circulară detectată pentru produsul: " + product.getName());
+        }
+
+        processingPath.add(product.getId());
+        try {
+            BigDecimal adjustedInputQuantity = adjustForTechnologicalSheet(product, targetOutputQuantity);
+            List<RecipeItem> recipeItems = recipeItemRepository.findByProductWithIngredient(product);
+            if (recipeItems.isEmpty()) {
+                throw new RuntimeException("No recipe defined for product: " + product.getName());
+            }
+
+            for (RecipeItem item : recipeItems) {
+                if (item.getComponentType() == RecipeItem.ComponentType.INGREDIENT && item.getIngredient() != null) {
+                    BigDecimal required = toIngredientUnit(item, item.getTotalRequiredQuantity(adjustedInputQuantity));
+                    ingredientRequirements.merge(item.getIngredient().getId(), required, BigDecimal::add);
+                    continue;
+                }
+
+                if (item.getComponentType() == RecipeItem.ComponentType.PRODUCT && item.getSourceProduct() != null) {
+                    Product sourceProduct = item.getSourceProduct();
+                    BigDecimal needed = item.getTotalRequiredQuantity(adjustedInputQuantity);
+
+                    BigDecimal remaining = virtualProductStocks.get(sourceProduct.getId());
+                    if (remaining == null) {
+                        remaining = sourceProduct.getPhysicalStock() != null ? sourceProduct.getPhysicalStock() : BigDecimal.ZERO;
+                    }
+
+                    if (remaining.compareTo(needed) >= 0) {
+                        virtualProductStocks.put(sourceProduct.getId(), remaining.subtract(needed));
+                    } else {
+                        BigDecimal deficit = needed.subtract(remaining.max(BigDecimal.ZERO));
+                        virtualProductStocks.put(sourceProduct.getId(), BigDecimal.ZERO);
+                        collectIngredientRequirements(sourceProduct, deficit, processingPath, ingredientRequirements, virtualProductStocks);
+                    }
+                }
+            }
+        } finally {
+            processingPath.remove(product.getId());
         }
     }
 }

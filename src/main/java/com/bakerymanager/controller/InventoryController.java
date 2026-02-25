@@ -1,18 +1,39 @@
 package com.bakerymanager.controller;
 
 import com.bakerymanager.entity.Ingredient;
+import com.bakerymanager.entity.Waste;
 import com.bakerymanager.smartbill.inventory.api.InventoryFacade;
+import com.bakerymanager.service.ReplenishmentService;
+import com.bakerymanager.service.StockService;
+import com.bakerymanager.service.UserService;
+import com.bakerymanager.service.WasteService;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
+import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.GridPane;
+import javafx.stage.FileChooser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Controller
 public class InventoryController {
@@ -20,9 +41,21 @@ public class InventoryController {
     private static final Logger logger = LoggerFactory.getLogger(InventoryController.class);
     
     private final InventoryFacade inventoryFacade;
+    private final StockService stockService;
+    private final WasteService wasteService;
+    private final UserService userService;
+    private final ReplenishmentService replenishmentService;
     
-    public InventoryController(InventoryFacade inventoryFacade) {
+    public InventoryController(InventoryFacade inventoryFacade,
+                               StockService stockService,
+                               WasteService wasteService,
+                               UserService userService,
+                               ReplenishmentService replenishmentService) {
         this.inventoryFacade = inventoryFacade;
+        this.stockService = stockService;
+        this.wasteService = wasteService;
+        this.userService = userService;
+        this.replenishmentService = replenishmentService;
     }
     
     // Form fields
@@ -46,6 +79,12 @@ public class InventoryController {
     
     @FXML
     private TextField barcodeField;
+
+    @FXML
+    private TextField warehouseField;
+
+    @FXML
+    private TextField zoneField;
     
     @FXML
     private Label statusLabel;
@@ -174,6 +213,8 @@ public class InventoryController {
         } else {
             barcodeField.clear();
         }
+        warehouseField.setText(ingredient.getWarehouse() != null ? ingredient.getWarehouse() : "");
+        zoneField.setText(ingredient.getZone() != null ? ingredient.getZone() : "");
         setStatus("Selectat: " + ingredient.getName());
     }
     
@@ -230,6 +271,9 @@ public class InventoryController {
             if (barcodeField.getText() != null && !barcodeField.getText().trim().isEmpty()) {
                 ingredient.setBarcode(barcodeField.getText().trim());
             }
+
+            ingredient.setWarehouse(normalizeOptionalField(warehouseField.getText()));
+            ingredient.setZone(normalizeOptionalField(zoneField.getText()));
             
             // Save ingredient
             inventoryFacade.saveIngredient(ingredient);
@@ -296,6 +340,169 @@ public class InventoryController {
             }
         });
     }
+
+    @FXML
+    public void transferInternal() {
+        Ingredient ingredient = requireSelectedIngredient();
+        if (ingredient == null) {
+            return;
+        }
+
+        BigDecimal quantity = promptDecimal("Transfer intern", "Cantitate transferată:");
+        if (quantity == null) {
+            return;
+        }
+
+        String fromLocation = promptText("Transfer intern", "Locație sursă:");
+        if (fromLocation == null) {
+            return;
+        }
+
+        String toLocation = promptText("Transfer intern", "Locație destinație:");
+        if (toLocation == null) {
+            return;
+        }
+
+        String reason = promptText("Transfer intern", "Motiv transfer:");
+        if (reason == null || reason.isBlank()) {
+            showError("Motivul este obligatoriu pentru transfer intern.");
+            return;
+        }
+
+        try {
+            String unit = ingredient.getUnitOfMeasure() != null ? ingredient.getUnitOfMeasure().name() : null;
+            stockService.transferInternal(ingredient, quantity, unit, fromLocation, toLocation, reason);
+            setStatus("Transfer intern înregistrat pentru " + ingredient.getName());
+            showSuccessMessage("Transfer intern înregistrat cu succes.");
+        } catch (Exception e) {
+            logger.error("Error during internal transfer", e);
+            showError("Eroare la transfer intern: " + e.getMessage());
+        }
+    }
+
+    @FXML
+    public void adjustStock() {
+        Ingredient ingredient = requireSelectedIngredient();
+        if (ingredient == null) {
+            return;
+        }
+
+        String mode = promptChoice("Ajustare stoc", "Tip ajustare:", List.of("Pozitivă (+)", "Negativă (-)"));
+        if (mode == null) {
+            return;
+        }
+
+        BigDecimal quantity = promptDecimal("Ajustare stoc", "Cantitate ajustare:");
+        if (quantity == null) {
+            return;
+        }
+
+        String reason = promptText("Ajustare stoc", "Motiv ajustare:");
+        if (reason == null || reason.isBlank()) {
+            showError("Motivul este obligatoriu pentru ajustare.");
+            return;
+        }
+
+        try {
+            String unit = ingredient.getUnitOfMeasure() != null ? ingredient.getUnitOfMeasure().name() : null;
+            BigDecimal delta = "Pozitivă (+)".equals(mode) ? quantity : quantity.negate();
+            stockService.adjustStock(ingredient, delta, unit, reason);
+
+            ingredient.setCurrentStock(ingredient.getCurrentStock().add(delta));
+            inventoryFacade.saveIngredient(ingredient);
+
+            loadIngredients();
+            setStatus("Ajustare stoc înregistrată pentru " + ingredient.getName());
+            showSuccessMessage("Ajustare de stoc realizată cu succes.");
+        } catch (Exception e) {
+            logger.error("Error during stock adjustment", e);
+            showError("Eroare la ajustare stoc: " + e.getMessage());
+        }
+    }
+
+    @FXML
+    public void returnToSupplier() {
+        Ingredient ingredient = requireSelectedIngredient();
+        if (ingredient == null) {
+            return;
+        }
+
+        BigDecimal quantity = promptDecimal("Retur furnizor", "Cantitate returnată:");
+        if (quantity == null) {
+            return;
+        }
+
+        String reason = promptText("Retur furnizor", "Motiv retur:");
+        if (reason == null || reason.isBlank()) {
+            showError("Motivul este obligatoriu pentru retur furnizor.");
+            return;
+        }
+
+        try {
+            String unit = ingredient.getUnitOfMeasure() != null ? ingredient.getUnitOfMeasure().name() : null;
+            stockService.returnToSupplier(ingredient, quantity, unit, reason);
+
+            ingredient.setCurrentStock(ingredient.getCurrentStock().subtract(quantity));
+            inventoryFacade.saveIngredient(ingredient);
+
+            loadIngredients();
+            setStatus("Retur furnizor înregistrat pentru " + ingredient.getName());
+            showSuccessMessage("Retur către furnizor înregistrat cu succes.");
+        } catch (Exception e) {
+            logger.error("Error during supplier return", e);
+            showError("Eroare la retur furnizor: " + e.getMessage());
+        }
+    }
+
+    @FXML
+    public void registerWaste() {
+        Ingredient ingredient = requireSelectedIngredient();
+        if (ingredient == null) {
+            return;
+        }
+
+        String wasteType = promptChoice(
+            "Pierderi/Casare",
+            "Tip pierdere:",
+            List.of("Rebut", "Expirat", "Donație")
+        );
+        if (wasteType == null) {
+            return;
+        }
+
+        BigDecimal quantity = promptDecimal("Pierderi/Casare", "Cantitate pierdută/casată:");
+        if (quantity == null) {
+            return;
+        }
+
+        String reason = promptText("Pierderi/Casare", "Motiv pierdere/casare:");
+        if (reason == null || reason.isBlank()) {
+            showError("Motivul este obligatoriu pentru pierdere/casare.");
+            return;
+        }
+
+        try {
+            String unit = ingredient.getUnitOfMeasure() != null ? ingredient.getUnitOfMeasure().name() : null;
+            stockService.registerWaste(ingredient, quantity, unit, reason);
+
+            Waste.WasteReason wasteReason = mapWasteReason(wasteType);
+            String recordedBy = userService.getCurrentUser()
+                .map(user -> user.getUsername() != null ? user.getUsername() : user.getFullName())
+                .orElse("SYSTEM");
+            String notes = "Tip: " + wasteType + ". Motiv: " + reason;
+            wasteService.recordIngredientWaste(ingredient, quantity, wasteReason, recordedBy, notes);
+
+            ingredient.setCurrentStock(ingredient.getCurrentStock().subtract(quantity));
+            inventoryFacade.saveIngredient(ingredient);
+
+            loadIngredients();
+            setStatus("Pierdere/Casare înregistrată pentru " + ingredient.getName());
+            showSuccessMessage("Document de pierdere/casare înregistrat cu succes.");
+        } catch (Exception e) {
+            logger.error("Error during waste registration", e);
+            showError("Eroare la înregistrare pierdere/casare: " + e.getMessage());
+        }
+    }
     
     @FXML
     public void clearForm() {
@@ -307,6 +514,8 @@ public class InventoryController {
         priceField.clear();
         minStockField.clear();
         barcodeField.clear();
+        warehouseField.clear();
+        zoneField.clear();
         ingredientsTable.getSelectionModel().clearSelection();
         setStatus("Formular golit");
     }
@@ -314,6 +523,437 @@ public class InventoryController {
     private void updateStatistics() {
         List<Ingredient> ingredients = inventoryFacade.getAllIngredients();
         totalIngredientsLabel.setText("Total produse: " + ingredients.size());
+    }
+
+    private Ingredient requireSelectedIngredient() {
+        if (selectedIngredient == null) {
+            showError("Selectați un ingredient din tabel.");
+            return null;
+        }
+        return selectedIngredient;
+    }
+
+    private BigDecimal promptDecimal(String title, String header) {
+        String value = promptText(title, header);
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            BigDecimal parsed = new BigDecimal(value.trim());
+            if (parsed.compareTo(BigDecimal.ZERO) <= 0) {
+                showError("Cantitatea trebuie să fie mai mare decât zero.");
+                return null;
+            }
+            return parsed;
+        } catch (NumberFormatException ex) {
+            showError("Cantitatea introdusă nu este validă.");
+            return null;
+        }
+    }
+
+    private String promptText(String title, String header) {
+        TextInputDialog dialog = new TextInputDialog();
+        dialog.setTitle(title);
+        dialog.setHeaderText(header);
+        dialog.setContentText("Valoare:");
+        Optional<String> result = dialog.showAndWait();
+        return result.orElse(null);
+    }
+
+    private String promptChoice(String title, String header, List<String> options) {
+        if (options == null || options.isEmpty()) {
+            return null;
+        }
+        ChoiceDialog<String> dialog = new ChoiceDialog<>(options.get(0), options);
+        dialog.setTitle(title);
+        dialog.setHeaderText(header);
+        dialog.setContentText("Selectați:");
+        Optional<String> result = dialog.showAndWait();
+        return result.orElse(null);
+    }
+
+    @FXML
+    public void runAssistedInventory() {
+        try {
+            Dialog<ButtonType> filterDialog = new Dialog<>();
+            filterDialog.setTitle("Inventariere asistată");
+            filterDialog.setHeaderText("Filtrare pe depozit / zonă (opțional)");
+            filterDialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+            GridPane grid = new GridPane();
+            grid.setHgap(10);
+            grid.setVgap(10);
+
+            TextField warehouseFilterField = new TextField();
+            warehouseFilterField.setPromptText("Ex: Depozit Principal");
+            TextField zoneFilterField = new TextField();
+            zoneFilterField.setPromptText("Ex: Raft A");
+
+            grid.add(new Label("Depozit:"), 0, 0);
+            grid.add(warehouseFilterField, 1, 0);
+            grid.add(new Label("Zonă:"), 0, 1);
+            grid.add(zoneFilterField, 1, 1);
+
+            filterDialog.getDialogPane().setContent(grid);
+
+            Optional<ButtonType> filterResult = filterDialog.showAndWait();
+            if (filterResult.isEmpty() || filterResult.get() != ButtonType.OK) {
+                return;
+            }
+
+            String warehouseFilter = normalizeOptionalField(warehouseFilterField.getText());
+            String zoneFilter = normalizeOptionalField(zoneFilterField.getText());
+
+            List<Ingredient> candidates = inventoryFacade.getAllIngredients().stream()
+                .filter(ing -> matchesFilter(ing.getWarehouse(), warehouseFilter))
+                .filter(ing -> matchesFilter(ing.getZone(), zoneFilter))
+                .sorted(Comparator.comparing(Ingredient::getName, String.CASE_INSENSITIVE_ORDER))
+                .collect(Collectors.toList());
+
+            if (candidates.isEmpty()) {
+                showError("Nu există produse/ingrediente pentru filtrul selectat.");
+                return;
+            }
+
+            Dialog<ButtonType> countDialog = new Dialog<>();
+            countDialog.setTitle("Inventariere asistată");
+            countDialog.setHeaderText("Introduceți cantitățile faptice (format: nume|cantitate)");
+            countDialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+            TextArea countsArea = new TextArea();
+            countsArea.setPrefRowCount(18);
+            countsArea.setPrefColumnCount(80);
+            countsArea.setWrapText(false);
+            countsArea.setText(buildCountingTemplate(candidates));
+            countDialog.getDialogPane().setContent(countsArea);
+
+            Node okButton = countDialog.getDialogPane().lookupButton(ButtonType.OK);
+            okButton.setDisable(false);
+
+            Optional<ButtonType> countResult = countDialog.showAndWait();
+            if (countResult.isEmpty() || countResult.get() != ButtonType.OK) {
+                return;
+            }
+
+            Map<String, BigDecimal> factualByName = parseFactualInput(countsArea.getText());
+            List<InventoryDiff> diffs = computeDiffs(candidates, factualByName, warehouseFilter, zoneFilter);
+
+            String summary = buildInventorySummary(diffs, warehouseFilter, zoneFilter);
+            Alert confirmation = new Alert(Alert.AlertType.CONFIRMATION);
+            confirmation.setTitle("Inventariere asistată - Propuneri ajustare");
+            confirmation.setHeaderText("Scriptic vs Faptic + propuneri");
+            TextArea summaryArea = new TextArea(summary);
+            summaryArea.setEditable(false);
+            summaryArea.setWrapText(false);
+            summaryArea.setPrefRowCount(18);
+            summaryArea.setPrefColumnCount(95);
+            confirmation.getDialogPane().setContent(summaryArea);
+            confirmation.getDialogPane().setPrefWidth(1000);
+            confirmation.setContentText(null);
+
+            Optional<ButtonType> confirmResult = confirmation.showAndWait();
+            if (confirmResult.isEmpty() || confirmResult.get() != ButtonType.OK) {
+                setStatus("Inventariere asistată anulată (fără ajustări aplicate)");
+                return;
+            }
+
+            int adjustedCount = 0;
+            for (InventoryDiff diff : diffs) {
+                if (diff.delta.compareTo(BigDecimal.ZERO) == 0) {
+                    continue;
+                }
+
+                String unit = diff.ingredient.getUnitOfMeasure() != null ? diff.ingredient.getUnitOfMeasure().name() : null;
+                String reason = "Inventariere asistată " + LocalDateTime.now() +
+                    " | depozit=" + (warehouseFilter != null ? warehouseFilter : "TOATE") +
+                    " | zona=" + (zoneFilter != null ? zoneFilter : "TOATE");
+                stockService.adjustStock(diff.ingredient, diff.delta, unit, reason);
+
+                diff.ingredient.setCurrentStock(diff.factualQty);
+                inventoryFacade.saveIngredient(diff.ingredient);
+                adjustedCount++;
+            }
+
+            loadIngredients();
+            setStatus("Inventariere finalizată. Ajustări aplicate: " + adjustedCount);
+            showSuccessMessage("Inventariere asistată finalizată cu succes.\nAjustări aplicate: " + adjustedCount);
+
+        } catch (Exception e) {
+            logger.error("Error running assisted inventory", e);
+            showError("Eroare la inventarierea asistată: " + e.getMessage());
+        }
+    }
+
+    @FXML
+    public void runSmartReplenishment() {
+        try {
+            List<ReplenishmentService.ReplenishmentSuggestion> suggestions = replenishmentService.generateTodaySuggestions();
+            if (suggestions.isEmpty()) {
+                showInfoDialog("Reaprovizionare inteligentă", "Nu există articole de comandat azi.");
+                setStatus("Reaprovizionare inteligentă: nimic de comandat azi");
+                return;
+            }
+
+            StringBuilder sb = new StringBuilder();
+            sb.append("=== LISTĂ AUTOMATĂ ‘DE COMANDAT AZI’ ===\n");
+            sb.append(String.format("%-22s | %8s | %8s | %8s | %10s | %8s | %s\n",
+                "Articol", "Stoc", "Siguranță", "Avg/zi", "Punct cmd", "Comandă", "Prioritate"));
+            sb.append("-----------------------------------------------------------------------------------------------------\n");
+
+            for (ReplenishmentService.ReplenishmentSuggestion s : suggestions) {
+                sb.append(String.format("%-22s | %8.3f | %8.3f | %8.3f | %10.3f | %8.3f | %s\n",
+                    trimForReport(s.ingredientName(), 22),
+                    s.currentStock(),
+                    s.safetyStock(),
+                    s.avgDailyConsumption(),
+                    s.reorderPoint(),
+                    s.recommendedOrderQty(),
+                    s.priority()));
+            }
+
+            sb.append("\nNotă: punct comandă = stoc siguranță + consum mediu/zi × lead-time (3 zile).\n");
+            sb.append("Consum mediu/zi calculat pe ultimele 30 zile (consum + waste + retur).\n");
+
+            TextArea area = new TextArea(sb.toString());
+            area.setEditable(false);
+            area.setWrapText(false);
+            area.setPrefRowCount(20);
+            area.setPrefColumnCount(110);
+
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Reaprovizionare inteligentă");
+            alert.setHeaderText("Listă automată ‘de comandat azi’");
+            alert.getDialogPane().setContent(area);
+            alert.getDialogPane().setPrefWidth(1100);
+            alert.setContentText(null);
+            alert.show();
+
+            setStatus("Reaprovizionare inteligentă generată: " + suggestions.size() + " articole");
+        } catch (Exception e) {
+            logger.error("Error generating smart replenishment list", e);
+            showError("Eroare la reaprovizionarea inteligentă: " + e.getMessage());
+        }
+    }
+
+    @FXML
+    public void exportSmartReplenishmentCsv() {
+        try {
+            List<ReplenishmentService.ReplenishmentSuggestion> suggestions = replenishmentService.generateTodaySuggestions();
+            if (suggestions.isEmpty()) {
+                showInfoDialog("Reaprovizionare inteligentă", "Nu există articole de exportat azi.");
+                return;
+            }
+
+            FileChooser fileChooser = new FileChooser();
+            fileChooser.setTitle("Salvează lista de reaprovizionare (CSV)");
+            fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV Files", "*.csv"));
+            fileChooser.setInitialFileName("de_comandat_azi_" + LocalDateTime.now().toLocalDate() + ".csv");
+
+            File selectedFile = fileChooser.showSaveDialog(ingredientsTable.getScene().getWindow());
+            if (selectedFile == null) {
+                return;
+            }
+
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(selectedFile))) {
+                writer.write("ingredient,unit,depozit,zona,stoc_curent,stoc_siguranta,consum_mediu_zi,punct_comanda,cantitate_de_comandat,prioritate");
+                writer.newLine();
+
+                for (ReplenishmentService.ReplenishmentSuggestion s : suggestions) {
+                    writer.write(String.join(",",
+                        csv(s.ingredientName()),
+                        csv(s.unit()),
+                        csv(s.warehouse()),
+                        csv(s.zone()),
+                        s.currentStock().toPlainString(),
+                        s.safetyStock().toPlainString(),
+                        s.avgDailyConsumption().toPlainString(),
+                        s.reorderPoint().toPlainString(),
+                        s.recommendedOrderQty().toPlainString(),
+                        csv(s.priority())
+                    ));
+                    writer.newLine();
+                }
+            }
+
+            setStatus("CSV reaprovizionare exportat: " + selectedFile.getName());
+            showSuccessMessage("Export realizat cu succes:\n" + selectedFile.getAbsolutePath());
+        } catch (IOException e) {
+            logger.error("Error exporting replenishment CSV", e);
+            showError("Eroare la export CSV reaprovizionare: " + e.getMessage());
+        } catch (Exception e) {
+            logger.error("Unexpected error exporting replenishment CSV", e);
+            showError("Eroare neașteptată la export reaprovizionare: " + e.getMessage());
+        }
+    }
+
+    private String buildCountingTemplate(List<Ingredient> ingredients) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("# Format: nume|cantitate_faptica\n");
+        sb.append("# Exemplu: Faina alba|120.500\n");
+        for (Ingredient ing : ingredients) {
+            BigDecimal scriptic = ing.getCurrentStock() != null ? ing.getCurrentStock() : BigDecimal.ZERO;
+            sb.append(ing.getName()).append("|").append(scriptic).append("\n");
+        }
+        return sb.toString();
+    }
+
+    private Map<String, BigDecimal> parseFactualInput(String input) {
+        Map<String, BigDecimal> result = new HashMap<>();
+        if (input == null || input.isBlank()) {
+            return result;
+        }
+
+        String[] lines = input.split("\\r?\\n");
+        for (String rawLine : lines) {
+            String line = rawLine != null ? rawLine.trim() : "";
+            if (line.isEmpty() || line.startsWith("#")) {
+                continue;
+            }
+
+            String[] parts = line.split("\\|", 2);
+            if (parts.length != 2) {
+                continue;
+            }
+
+            String name = parts[0].trim();
+            String qtyText = parts[1].trim().replace(',', '.');
+            if (name.isEmpty() || qtyText.isEmpty()) {
+                continue;
+            }
+
+            try {
+                BigDecimal qty = new BigDecimal(qtyText);
+                result.put(name.toLowerCase(Locale.ROOT), qty);
+            } catch (NumberFormatException ex) {
+                logger.warn("Skipping invalid factual quantity line: {}", line);
+            }
+        }
+
+        return result;
+    }
+
+    private List<InventoryDiff> computeDiffs(List<Ingredient> ingredients,
+                                             Map<String, BigDecimal> factualByName,
+                                             String warehouseFilter,
+                                             String zoneFilter) {
+        List<InventoryDiff> diffs = new ArrayList<>();
+        for (Ingredient ing : ingredients) {
+            BigDecimal scriptic = ing.getCurrentStock() != null ? ing.getCurrentStock() : BigDecimal.ZERO;
+            BigDecimal factual = factualByName.getOrDefault(ing.getName().toLowerCase(Locale.ROOT), scriptic);
+            BigDecimal delta = factual.subtract(scriptic);
+            diffs.add(new InventoryDiff(ing, scriptic, factual, delta, warehouseFilter, zoneFilter));
+        }
+        return diffs;
+    }
+
+    private String buildInventorySummary(List<InventoryDiff> diffs,
+                                         String warehouseFilter,
+                                         String zoneFilter) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("=== INVENTARIERE ASISTATĂ ===\n");
+        sb.append("Depozit: ").append(warehouseFilter != null ? warehouseFilter : "TOATE").append("\n");
+        sb.append("Zonă: ").append(zoneFilter != null ? zoneFilter : "TOATE").append("\n\n");
+        sb.append(String.format("%-25s | %10s | %10s | %10s | %s\n", "Articol", "Scriptic", "Faptic", "Diferență", "Propunere"));
+        sb.append("--------------------------------------------------------------------------------------------------------\n");
+
+        BigDecimal totalPlus = BigDecimal.ZERO;
+        BigDecimal totalMinus = BigDecimal.ZERO;
+
+        for (InventoryDiff diff : diffs) {
+            String proposal;
+            if (diff.delta.compareTo(BigDecimal.ZERO) > 0) {
+                proposal = "Ajustare +" + diff.delta.setScale(3, RoundingMode.HALF_UP);
+                totalPlus = totalPlus.add(diff.delta);
+            } else if (diff.delta.compareTo(BigDecimal.ZERO) < 0) {
+                proposal = "Ajustare " + diff.delta.setScale(3, RoundingMode.HALF_UP);
+                totalMinus = totalMinus.add(diff.delta.abs());
+            } else {
+                proposal = "Fără ajustare";
+            }
+
+            sb.append(String.format("%-25s | %10.3f | %10.3f | %10.3f | %s\n",
+                diff.ingredient.getName(),
+                diff.scripticQty,
+                diff.factualQty,
+                diff.delta,
+                proposal
+            ));
+        }
+
+        sb.append("\nTOTAL ajustări + : ").append(totalPlus.setScale(3, RoundingMode.HALF_UP)).append("\n");
+        sb.append("TOTAL ajustări - : ").append(totalMinus.setScale(3, RoundingMode.HALF_UP)).append("\n");
+        sb.append("\nApăsați OK pentru a aplica propunerile de ajustare.");
+        return sb.toString();
+    }
+
+    private boolean matchesFilter(String value, String filter) {
+        if (filter == null || filter.isBlank()) {
+            return true;
+        }
+        if (value == null || value.isBlank()) {
+            return false;
+        }
+        return value.trim().equalsIgnoreCase(filter.trim());
+    }
+
+    private String normalizeOptionalField(String value) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.trim();
+        return normalized.isEmpty() ? null : normalized;
+    }
+
+    private String trimForReport(String text, int maxLength) {
+        if (text == null) {
+            return "";
+        }
+        if (text.length() <= maxLength) {
+            return text;
+        }
+        return text.substring(0, Math.max(0, maxLength - 1)) + "…";
+    }
+
+    private String csv(String value) {
+        if (value == null) {
+            return "";
+        }
+        String escaped = value.replace("\"", "\"\"");
+        if (escaped.contains(",") || escaped.contains("\"") || escaped.contains("\n") || escaped.contains("\r")) {
+            return "\"" + escaped + "\"";
+        }
+        return escaped;
+    }
+
+    private static class InventoryDiff {
+        private final Ingredient ingredient;
+        private final BigDecimal scripticQty;
+        private final BigDecimal factualQty;
+        private final BigDecimal delta;
+
+        private InventoryDiff(Ingredient ingredient,
+                              BigDecimal scripticQty,
+                              BigDecimal factualQty,
+                              BigDecimal delta,
+                              String warehouse,
+                              String zone) {
+            this.ingredient = ingredient;
+            this.scripticQty = scripticQty;
+            this.factualQty = factualQty;
+            this.delta = delta;
+        }
+    }
+
+    private Waste.WasteReason mapWasteReason(String typeLabel) {
+        if (typeLabel == null) {
+            return Waste.WasteReason.OTHER;
+        }
+        return switch (typeLabel.trim().toLowerCase()) {
+            case "rebut" -> Waste.WasteReason.REBUT;
+            case "expirat" -> Waste.WasteReason.EXPIRED;
+            case "donație", "donatie" -> Waste.WasteReason.DONATION;
+            default -> Waste.WasteReason.OTHER;
+        };
     }
     
     private void setStatus(String message) {
@@ -333,6 +973,14 @@ public class InventoryController {
     private void showError(String message) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle("Eroare");
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.show();
+    }
+
+    private void showInfoDialog(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle(title);
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.show();

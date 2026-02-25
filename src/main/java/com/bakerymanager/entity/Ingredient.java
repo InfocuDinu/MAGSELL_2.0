@@ -34,6 +34,12 @@ public class Ingredient {
     
     @Column(name = "notes", length = 500)
     private String notes;
+
+    @Column(name = "warehouse", length = 100)
+    private String warehouse;
+
+    @Column(name = "zone", length = 100)
+    private String zone;
     
     // NEW: Expiration date tracking for food safety
     @Column(name = "expiration_date")
@@ -134,6 +140,12 @@ public class Ingredient {
     
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
+
+    public String getWarehouse() { return warehouse; }
+    public void setWarehouse(String warehouse) { this.warehouse = warehouse; }
+
+    public String getZone() { return zone; }
+    public void setZone(String zone) { this.zone = zone; }
     
     public LocalDate getExpirationDate() { return expirationDate; }
     public void setExpirationDate(LocalDate expirationDate) { this.expirationDate = expirationDate; }

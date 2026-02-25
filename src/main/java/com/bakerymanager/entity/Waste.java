@@ -56,7 +56,9 @@ public class Waste {
     }
     
     public enum WasteReason {
+        REBUT,             // Rebut
         EXPIRED,           // Expirat
+        DONATION,          // Donație
         DAMAGED,           // Deteriorat
         BURNT,             // Ars
         DROPPED,           // Căzut
@@ -64,6 +66,25 @@ public class Waste {
         OVERPRODUCTION,    // Supraproducție
         CONTAMINATION,     // Contaminare
         OTHER              // Altele
+    }
+
+    public enum ManagementType {
+        REBUT,
+        EXPIRED,
+        DONATION,
+        OTHER
+    }
+
+    public ManagementType getManagementType() {
+        if (reason == null) {
+            return ManagementType.OTHER;
+        }
+        return switch (reason) {
+            case REBUT, BURNT, DROPPED, QUALITY_ISSUE, DAMAGED -> ManagementType.REBUT;
+            case EXPIRED -> ManagementType.EXPIRED;
+            case DONATION -> ManagementType.DONATION;
+            default -> ManagementType.OTHER;
+        };
     }
     
     // Constructor

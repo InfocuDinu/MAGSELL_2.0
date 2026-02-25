@@ -34,6 +34,9 @@ public class SaleItem {
     
     @Column(name = "barcode")
     private String barcode;
+
+    @Column(name = "vat_rate", precision = 5, scale = 2, nullable = false)
+    private BigDecimal vatRate = new BigDecimal("21");  // 0%, 11%, or 21%
     
     @Column(name = "created_at")
     private LocalDateTime createdAt;
@@ -65,6 +68,7 @@ public class SaleItem {
         if (product != null) {
             this.productName = product.getName();
             this.barcode = product.getBarcode();
+            this.vatRate = product.getVatRate() != null ? product.getVatRate() : new BigDecimal("21");
         }
     }
     
@@ -91,4 +95,7 @@ public class SaleItem {
     
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public BigDecimal getVatRate() { return vatRate; }
+    public void setVatRate(BigDecimal vatRate) { this.vatRate = vatRate; }
 }

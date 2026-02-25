@@ -11,4 +11,11 @@ import java.util.List;
 public interface StockMovementRepository extends JpaRepository<StockMovement, Long> {
 
     List<StockMovement> findByMovementDateBetweenOrderByMovementDateDesc(LocalDateTime start, LocalDateTime end);
+
+    List<StockMovement> findByIngredientIdAndMovementTypeInAndMovementDateBetween(
+        Long ingredientId,
+        List<StockMovement.MovementType> movementTypes,
+        LocalDateTime start,
+        LocalDateTime end
+    );
 }

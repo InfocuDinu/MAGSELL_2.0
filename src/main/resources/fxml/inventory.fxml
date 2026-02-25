@@ -62,8 +62,27 @@
                     
                     <Label text="Cod Bare:" GridPane.rowIndex="6" GridPane.columnIndex="0"/>
                     <TextField fx:id="barcodeField" GridPane.rowIndex="6" GridPane.columnIndex="1" styleClass="text-field"/>
+
+                    <Label text="Depozit:" GridPane.rowIndex="7" GridPane.columnIndex="0"/>
+                    <TextField fx:id="warehouseField" GridPane.rowIndex="7" GridPane.columnIndex="1" styleClass="text-field"/>
+
+                    <Label text="Zonă:" GridPane.rowIndex="8" GridPane.columnIndex="0"/>
+                    <TextField fx:id="zoneField" GridPane.rowIndex="8" GridPane.columnIndex="1" styleClass="text-field"/>
                 </GridPane>
                 
+                <HBox spacing="15" alignment="CENTER_RIGHT">
+                    <Button text="📋 Inventariere Asistată" onAction="#runAssistedInventory" styleClass="button info"/>
+                    <Button text="🧠 Reaprovizionare Inteligentă" onAction="#runSmartReplenishment" styleClass="button primary"/>
+                    <Button text="📤 Export CSV Comandă Azi" onAction="#exportSmartReplenishmentCsv" styleClass="button"/>
+                </HBox>
+
+                <HBox spacing="15" alignment="CENTER_RIGHT">
+                    <Button text="↔ Transfer Intern" onAction="#transferInternal" styleClass="button primary"/>
+                    <Button text="⚖ Ajustare" onAction="#adjustStock" styleClass="button"/>
+                    <Button text="↩ Retur Furnizor" onAction="#returnToSupplier" styleClass="button info"/>
+                    <Button text="🗑 Pierdere/Casare" onAction="#registerWaste" styleClass="button danger"/>
+                </HBox>
+
                 <HBox spacing="15" alignment="CENTER_RIGHT">
                     <Button text="Salvează" onAction="#saveIngredient" styleClass="button success"/>
                     <Button text="Șterge" onAction="#deleteIngredient" styleClass="button danger"/>

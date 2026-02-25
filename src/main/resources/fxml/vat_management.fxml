@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.geometry.Insets?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.bakerymanager.controller.VATManagementController"
+            stylesheets="@../css/style.css">
+    
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+    
+    <!-- Top Header -->
+    <top>
+        <VBox styleClass="header" spacing="20">
+            <HBox alignment="CENTER_LEFT" spacing="20">
+                <Label text="Gestiune Rate TVA - Produse" styleClass="header-title"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Button text="➕ Adaugă Produs" onAction="#addProduct" styleClass="button success"/>
+                <Button text="🔄 Reîncarcă" onAction="#loadProducts" styleClass="button primary"/>
+            </HBox>
+            
+            <!-- Summary Info -->
+            <HBox spacing="30" styleClass="info-bar">
+                <Label fx:id="totalProductsLabel" text="Total Produse: 0"/>
+                <Label fx:id="zeroRateCountLabel" text="0% TVA: 0"/>
+                <Label fx:id="elevenRateCountLabel" text="11% TVA: 0"/>
+                <Label fx:id="twentyOneRateCountLabel" text="21% TVA: 0"/>
+            </HBox>
+        </VBox>
+    </top>
+    
+    <center>
+        <SplitPane dividerPositions="0.7" orientation="HORIZONTAL">
+            
+            <!-- Products Table -->
+            <VBox spacing="15">
+                <HBox alignment="CENTER_LEFT" spacing="15">
+                    <Label text="Lista Produse" styleClass="label-title"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <TextField fx:id="searchField" promptText="Cauta produs..." prefWidth="200"/>
+                </HBox>
+                
+                <TableView fx:id="productsTable" VBox.vgrow="ALWAYS" styleClass="table-view">
+                    <columns>
+                        <TableColumn fx:id="idColumn" text="ID" prefWidth="40"/>
+                        <TableColumn fx:id="nameColumn" text="Nume Produs" prefWidth="150"/>
+                        <TableColumn fx:id="priceLColumn" text="Preț Vânzare" prefWidth="100"/>
+                        <TableColumn fx:id="vatRateColumn" text="Cota TVA (%)" prefWidth="80"/>
+                        <TableColumn fx:id="categoryColumn" text="Categorie" prefWidth="100"/>
+                        <TableColumn fx:id="actionColumn" text="Acțiuni" prefWidth="100"/>
+                    </columns>
+                </TableView>
+            </VBox>
+            
+            <!-- Product Edit Form -->
+            <VBox styleClass="form-pane" spacing="20">
+                <Label text="Configurare Produs" styleClass="label-title"/>
+                
+                <ScrollPane VBox.vgrow="ALWAYS" fitToWidth="true">
+                    <VBox spacing="15" styleClass="form-content">
+                        <GridPane hgap="15" vgap="15">
+                            <Label text="ID Produs:" GridPane.rowIndex="0" GridPane.columnIndex="0" styleClass="form-label"/>
+                            <Label fx:id="productIdLabel" GridPane.rowIndex="0" GridPane.columnIndex="1" text="---" styleClass="form-value"/>
+                            
+                            <Label text="Nume:" GridPane.rowIndex="1" GridPane.columnIndex="0" styleClass="form-label"/>
+                            <TextField fx:id="productNameField" GridPane.rowIndex="1" GridPane.columnIndex="1" styleClass="text-field"/>
+                            
+                            <Label text="Preț Vânzare:" GridPane.rowIndex="2" GridPane.columnIndex="0" styleClass="form-label"/>
+                            <TextField fx:id="productPriceField" GridPane.rowIndex="2" GridPane.columnIndex="1" styleClass="text-field"/>
+                            
+                            <Label text="Categorie:" GridPane.rowIndex="3" GridPane.columnIndex="0" styleClass="form-label"/>
+                            <ComboBox fx:id="productCategoryCombo" GridPane.rowIndex="3" GridPane.columnIndex="1" styleClass="combo-box"/>
+                            
+                            <Label text="Cota TVA:" GridPane.rowIndex="4" GridPane.columnIndex="0" styleClass="form-label"/>
+                            <ComboBox fx:id="vatRateCombo" GridPane.rowIndex="4" GridPane.columnIndex="1" styleClass="combo-box" prefWidth="150"/>
+                            
+                            <Label text="Descriere TVA:" GridPane.rowIndex="5" GridPane.columnIndex="0" GridPane.columnSpan="2" styleClass="form-label-hint"/>
+                            <Label fx:id="vatDescriptionLabel" GridPane.rowIndex="6" GridPane.columnIndex="0" GridPane.columnSpan="2" 
+                                   text="Selectează cota TVA aplicabilă produsului" wrapText="true" styleClass="info-text"/>
+                        </GridPane>
+                        
+                        <Separator/>
+                        
+                        <!-- VAT Rate Information -->
+                        <VBox spacing="10" styleClass="info-box">
+                            <Label text="ℹ Categorii TVA Disponibile:" styleClass="label-title"/>
+                            
+                            <HBox spacing="20">
+                                <VBox spacing="5" prefWidth="200">
+                                    <Label text="0% - Taxa Zero" styleClass="vat-rate-label zero-rate"/>
+                                    <Label text="Produse alimentare fără ambalaj" wrapText="true" styleClass="vat-rate-description"/>
+                                    <Label text="Ex: Pâine, cornuri simple" wrapText="true" styleClass="vat-rate-example"/>
+                                </VBox>
+                                
+                                <VBox spacing="5" prefWidth="200">
+                                    <Label text="11% - Cota Redusă" styleClass="vat-rate-label reduced-rate"/>
+                                    <Label text="Produse alimentare cu ambalaj special" wrapText="true" styleClass="vat-rate-description"/>
+                                    <Label text="Ex: Produse premium, decorative" wrapText="true" styleClass="vat-rate-example"/>
+                                </VBox>
+                                
+                                <VBox spacing="5" prefWidth="200">
+                                    <Label text="21% - Cota Standard" styleClass="vat-rate-label standard-rate"/>
+                                    <Label text="Servicii și alte produse taxabile" wrapText="true" styleClass="vat-rate-description"/>
+                                    <Label text="Ex: Servicii, mâncare gata preparată" wrapText="true" styleClass="vat-rate-example"/>
+                                </VBox>
+                            </HBox>
+                        </VBox>
+                        
+                        <Separator/>
+                        
+                        <!-- Action Buttons -->
+                        <HBox spacing="15" alignment="CENTER_RIGHT">
+                            <Button text="💾 Salvează" onAction="#saveProduct" styleClass="button success"/>
+                            <Button text="🗑 Șterge" onAction="#deleteProduct" styleClass="button danger"/>
+                            <Button text="✖ Anulează" onAction="#cancelEdit" styleClass="button"/>
+                        </HBox>
+                    </VBox>
+                </ScrollPane>
+            </VBox>
+        </SplitPane>
+    </center>
+</BorderPane>

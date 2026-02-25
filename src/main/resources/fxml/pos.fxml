@@ -17,7 +17,7 @@
                 <Label text="Punct de Vânzare (POS)" styleClass="label-title"/>
                 <Region HBox.hgrow="ALWAYS"/>
                 
-                <TextField fx:id="searchProductField" promptText="Caută produs..." prefWidth="200"/>
+                <TextField fx:id="searchProductField" promptText="Caută produs / Scanează cod bare + Enter" prefWidth="280" onAction="#handleBarcodeScan"/>
                 <Label fx:id="currentTimeLabel" styleClass="status-label"/>
             </HBox>
             
@@ -28,6 +28,14 @@
                 <Button text="🔄 Reîncarcă Produse" onAction="#loadProducts" styleClass="button, primary"/>
                 <Button text="➕ Introduceți Manual" onAction="#addProductManually" styleClass="button, success"/>
             </HBox>
+
+            <!-- Ultra-Rapid Favorites -->
+            <VBox spacing="6">
+                <Label text="⭐ Favorite rapide (click pe ★ sub produs pentru toggle)" styleClass="label-subtitle"/>
+                <ScrollPane fitToWidth="true" hbarPolicy="AS_NEEDED" vbarPolicy="NEVER" prefHeight="80">
+                    <TilePane fx:id="favoriteTilePane" hgap="8" vgap="8" prefColumns="6"/>
+                </ScrollPane>
+            </VBox>
         </VBox>
     </top>
     
@@ -64,7 +72,7 @@
                     
                     <!-- Cart Summary -->
                     <GridPane hgap="10" vgap="5">
-                        <Label text="Produse:" GridPane.rowIndex="0" GridPane.columnIndex="0" styleClass="label-muted"/>
+                        <Label text="Cantitate totală:" GridPane.rowIndex="0" GridPane.columnIndex="0" styleClass="label-muted"/>
                         <Label fx:id="totalItemsLabel" text="0" GridPane.rowIndex="0" GridPane.columnIndex="1" styleClass="label-subtitle"/>
                         
                         <Label text="Total:" GridPane.rowIndex="1" GridPane.columnIndex="0" styleClass="label-muted"/>

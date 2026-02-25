@@ -5,6 +5,7 @@ import com.bakerymanager.entity.Product;
 import com.bakerymanager.entity.IngredientBatch;
 import com.bakerymanager.entity.StockMovement;
 import com.bakerymanager.entity.ProductionConsumption;
+import com.bakerymanager.entity.ProductionReport;
 import com.bakerymanager.entity.SaleItem;
 import com.bakerymanager.entity.RecipeItem;
 
@@ -25,6 +26,8 @@ public interface ReportingPort {
     List<StockMovement> getStockMovements(LocalDateTime startDate, LocalDateTime endDate);
 
     List<ProductionConsumption> getProductionConsumptions(LocalDate startDate, LocalDate endDate);
+
+    List<ProductionReport> getProductionReportsByDateRange(LocalDateTime startDate, LocalDateTime endDate);
 
     List<SaleItem> getSaleItems(LocalDateTime startDate, LocalDateTime endDate);
 

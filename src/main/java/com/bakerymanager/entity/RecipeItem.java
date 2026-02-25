@@ -6,6 +6,11 @@ import java.math.BigDecimal;
 @Entity
 @Table(name = "recipe_items")
 public class RecipeItem {
+
+    public enum ComponentType {
+        INGREDIENT,
+        PRODUCT
+    }
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -16,8 +21,16 @@ public class RecipeItem {
     private Product product;
     
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "ingredient_id", nullable = false)
+    @JoinColumn(name = "ingredient_id")
     private Ingredient ingredient;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "source_product_id")
+    private Product sourceProduct;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "component_type", length = 20, nullable = false)
+    private ComponentType componentType = ComponentType.INGREDIENT;
     
     @Column(name = "required_quantity", nullable = false, precision = 10, scale = 3)
     private BigDecimal requiredQuantity;
@@ -29,6 +42,9 @@ public class RecipeItem {
     protected void onCreate() {
         if (requiredQuantity == null) {
             requiredQuantity = BigDecimal.ZERO;
+        }
+        if (componentType == null) {
+            componentType = ComponentType.INGREDIENT;
         }
     }
     
@@ -45,6 +61,12 @@ public class RecipeItem {
     
     public Ingredient getIngredient() { return ingredient; }
     public void setIngredient(Ingredient ingredient) { this.ingredient = ingredient; }
+
+    public Product getSourceProduct() { return sourceProduct; }
+    public void setSourceProduct(Product sourceProduct) { this.sourceProduct = sourceProduct; }
+
+    public ComponentType getComponentType() { return componentType; }
+    public void setComponentType(ComponentType componentType) { this.componentType = componentType; }
     
     public BigDecimal getRequiredQuantity() { return requiredQuantity; }
     public void setRequiredQuantity(BigDecimal requiredQuantity) { this.requiredQuantity = requiredQuantity; }
@@ -54,5 +76,9 @@ public class RecipeItem {
     
     public Long getIngredientId() { 
         return ingredient != null ? ingredient.getId() : null; 
+    }
+
+    public Long getSourceProductId() {
+        return sourceProduct != null ? sourceProduct.getId() : null;
     }
 }
