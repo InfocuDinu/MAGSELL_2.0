@@ -7,6 +7,7 @@ import com.bakerymanager.entity.ReceptionNote;
 import com.bakerymanager.entity.ReceptionNoteLine;
 import com.bakerymanager.service.IngredientService;
 import com.bakerymanager.smartbill.invoicing.api.InvoicingFacade;
+import com.bakerymanager.smartbill.invoicing.api.SmartBillExportResult;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -738,6 +739,29 @@ public class InvoicesController {
         } catch (Exception e) {
             logger.error("Error loading reception notes", e);
             showError("Eroare la încărcarea NIR-urilor: " + e.getMessage());
+        }
+    }
+
+    @FXML
+    public void exportSelectedNirToSmartBill() {
+        try {
+            ReceptionNote selected = nirTable.getSelectionModel().getSelectedItem();
+            if (selected == null) {
+                showError("Selectați un NIR din tabel înainte de export.");
+                return;
+            }
+
+            SmartBillExportResult result = invoicingFacade.exportReceptionNoteToSmartBill(selected.getId());
+            showSuccessMessage("Export SmartBill realizat cu succes."
+                + "\nNIR: " + selected.getNirNumber()
+                + (result.externalDocumentId() != null ? "\nID extern: " + result.externalDocumentId() : "")
+                + "\nMesaj: " + result.message()
+                + "\nÎncercări: " + result.attempts());
+            logger.info("NIR {} exported to SmartBill. attempts={}, status={}",
+                selected.getNirNumber(), result.attempts(), result.httpStatusCode());
+        } catch (Exception e) {
+            logger.error("Error exporting NIR to SmartBill", e);
+            showError("Exportul SmartBill a eșuat: " + e.getMessage());
         }
     }
     

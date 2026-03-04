@@ -29,15 +29,15 @@
 
 ## A. FAZA 4 – Integrări și optimizări (prioritate ridicată)
 
-- [ ] **SmartBill API v2**
-  - Extindere export NIR
-  - Mapping complet documente + erori API + retry logic
-  - Validare de business înainte de trimitere
+- [x] **SmartBill API v2** *(implementare tehnică finalizată; urmează validare operațională/UAT cu credentiale reale)*
+  - [x] Extindere export NIR
+  - [x] Mapping complet documente + erori API + retry logic
+  - [x] Validare de business înainte de trimitere
 
-- [ ] **Payment Processing POS**
-  - Fluxuri complete pentru metode de plată
-  - Validări + reconciliere tranzacții
-  - Status-uri tranzacție și audit
+- [x] **Payment Processing POS** *(implementare tehnică finalizată, inclusiv reconciliere manuală din UI POS; urmează validare operațională/UAT pe terminal/flux real)*
+  - [x] Fluxuri complete pentru metode de plată
+  - [x] Validări + reconciliere tranzacții
+  - [x] Status-uri tranzacție și audit
 
 - [ ] **Barcode Scanning (inventory intake/outtake)**
   - Flux dedicat recepție/consum stoc

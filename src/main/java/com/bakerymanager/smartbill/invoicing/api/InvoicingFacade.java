@@ -3,6 +3,7 @@ package com.bakerymanager.smartbill.invoicing.api;
 import com.bakerymanager.entity.Invoice;
 import com.bakerymanager.entity.InvoiceLine;
 import com.bakerymanager.entity.ReceptionNote;
+import com.bakerymanager.smartbill.invoicing.api.SmartBillExportResult;
 import com.lowagie.text.DocumentException;
 
 import java.io.IOException;
@@ -30,4 +31,6 @@ public interface InvoicingFacade {
     ReceptionNote getReceptionNoteForExport(Long receptionNoteId);
 
     void exportReceptionNotePdf(Long receptionNoteId, String filePath) throws IOException, DocumentException;
+
+    SmartBillExportResult exportReceptionNoteToSmartBill(Long receptionNoteId);
 }

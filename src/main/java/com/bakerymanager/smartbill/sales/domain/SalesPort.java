@@ -1,6 +1,7 @@
 package com.bakerymanager.smartbill.sales.domain;
 
 import com.bakerymanager.entity.Product;
+import com.bakerymanager.entity.PaymentTransaction;
 import com.bakerymanager.entity.Sale;
 import com.bakerymanager.service.SaleService;
 
@@ -16,4 +17,8 @@ public interface SalesPort {
     boolean printFiscalReceipt(Sale sale);
 
     String getLastFiscalError();
+
+    List<PaymentTransaction> getPendingPaymentTransactions();
+
+    PaymentTransaction reconcilePaymentTransaction(Long transactionId, BigDecimal settledAmount, String operator, String details);
 }

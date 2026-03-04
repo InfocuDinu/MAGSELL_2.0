@@ -21,6 +21,12 @@ public class Sale {
     
     @Column(name = "payment_method")
     private String paymentMethod;
+
+    @Column(name = "payment_transaction_id")
+    private Long paymentTransactionId;
+
+    @Column(name = "payment_transaction_status")
+    private String paymentTransactionStatus;
     
     @Column(name = "cash_received", precision = 12, scale = 2)
     private BigDecimal cashReceived;
@@ -99,6 +105,12 @@ public class Sale {
     
     public String getPaymentMethod() { return paymentMethod; }
     public void setPaymentMethod(String paymentMethod) { this.paymentMethod = paymentMethod; }
+
+    public Long getPaymentTransactionId() { return paymentTransactionId; }
+    public void setPaymentTransactionId(Long paymentTransactionId) { this.paymentTransactionId = paymentTransactionId; }
+
+    public String getPaymentTransactionStatus() { return paymentTransactionStatus; }
+    public void setPaymentTransactionStatus(String paymentTransactionStatus) { this.paymentTransactionStatus = paymentTransactionStatus; }
     
     public BigDecimal getCashReceived() { return cashReceived; }
     public void setCashReceived(BigDecimal cashReceived) { this.cashReceived = cashReceived; }

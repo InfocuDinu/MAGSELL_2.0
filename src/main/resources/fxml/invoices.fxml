@@ -57,6 +57,7 @@
         <HBox alignment="CENTER_LEFT" spacing="10">
             <Label text="Note de Intrare Recepție (NIR)" styleClass="label-title"/>
             <Region HBox.hgrow="ALWAYS"/>
+            <Button text="☁ Export SmartBill" onAction="#exportSelectedNirToSmartBill" styleClass="button, info"/>
             <Button text="🔄 Reîncarcă" onAction="#loadReceptionNotes" styleClass="button"/>
         </HBox>
         

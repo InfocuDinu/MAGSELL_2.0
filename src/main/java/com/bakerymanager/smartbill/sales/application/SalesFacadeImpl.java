@@ -1,6 +1,7 @@
 package com.bakerymanager.smartbill.sales.application;
 
 import com.bakerymanager.entity.Product;
+import com.bakerymanager.entity.PaymentTransaction;
 import com.bakerymanager.entity.Sale;
 import com.bakerymanager.service.SaleService;
 import com.bakerymanager.smartbill.sales.api.SalesFacade;
@@ -50,5 +51,15 @@ public class SalesFacadeImpl implements SalesFacade {
     @Override
     public String getLastFiscalError() {
         return salesPort.getLastFiscalError();
+    }
+
+    @Override
+    public List<PaymentTransaction> getPendingPaymentTransactions() {
+        return salesPort.getPendingPaymentTransactions();
+    }
+
+    @Override
+    public PaymentTransaction reconcilePaymentTransaction(Long transactionId, BigDecimal settledAmount, String operator, String details) {
+        return salesPort.reconcilePaymentTransaction(transactionId, settledAmount, operator, details);
     }
 }

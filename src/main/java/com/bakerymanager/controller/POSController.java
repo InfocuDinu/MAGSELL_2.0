@@ -1,5 +1,6 @@
 package com.bakerymanager.controller;
 
+import com.bakerymanager.entity.PaymentTransaction;
 import com.bakerymanager.entity.Product;
 import com.bakerymanager.service.SaleService;
 import com.bakerymanager.smartbill.sales.api.SalesFacade;
@@ -26,7 +27,9 @@ import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -151,9 +154,10 @@ public class POSController {
             accelerators.put(new KeyCodeCombination(KeyCode.F6), this::clearCart);
             accelerators.put(new KeyCodeCombination(KeyCode.F7), this::printReceipt);
             accelerators.put(new KeyCodeCombination(KeyCode.F8), this::showDailyReport);
+            accelerators.put(new KeyCodeCombination(KeyCode.F9), this::openPaymentReconciliationDialog);
             accelerators.put(new KeyCodeCombination(KeyCode.M, KeyCombination.CONTROL_DOWN), this::addProductManually);
 
-            posStatusLabel.setText("POS ultra-rapid activ: F2 Căutare | F4 Încasează | F6 Golește | F7 Bon | Ctrl+M Manual");
+            posStatusLabel.setText("POS ultra-rapid activ: F2 Căutare | F4 Încasează | F6 Golește | F7 Bon | F9 Reconciliere | Ctrl+M Manual");
         });
     }
     
@@ -165,6 +169,9 @@ public class POSController {
             "Altele"
         ));
         paymentMethodCombo.setValue("Numerar");
+
+        paymentMethodCombo.valueProperty().addListener((obs, oldVal, newVal) -> calculateChange());
+        amountReceivedField.textProperty().addListener((obs, oldVal, newVal) -> calculateChange());
     }
     
     private void setupCartTable() {
@@ -635,10 +642,30 @@ public class POSController {
         BigDecimal total = getCartTotal();
         
         try {
-            BigDecimal amountReceived = new BigDecimal(amountReceivedField.getText());
-            if (amountReceived.compareTo(total) < 0) {
-                showError("Suma primită este insuficientă!");
+            String paymentMethod = paymentMethodCombo.getValue();
+            if (paymentMethod == null || paymentMethod.isBlank()) {
+                showError("Selectați metoda de plată.");
                 return;
+            }
+
+            BigDecimal amountReceived;
+            if ("Numerar".equals(paymentMethod)) {
+                amountReceived = new BigDecimal(amountReceivedField.getText());
+                if (amountReceived.compareTo(total) < 0) {
+                    showError("Suma primită este insuficientă pentru plata în numerar!");
+                    return;
+                }
+            } else {
+                if (amountReceivedField.getText() == null || amountReceivedField.getText().trim().isEmpty()) {
+                    amountReceived = total;
+                } else {
+                    amountReceived = new BigDecimal(amountReceivedField.getText());
+                }
+
+                if (amountReceived.compareTo(total) != 0) {
+                    showError("Pentru metoda selectată, suma trebuie să fie exact totalul tranzacției.");
+                    return;
+                }
             }
             
             // Creare lista de CartItem pentru serviciu
@@ -651,7 +678,6 @@ public class POSController {
                 .toList();
             
             // Salvare vânzare în baza de date
-            String paymentMethod = paymentMethodCombo.getValue();
             String operator = "Operator"; // Poate fi preluat din sistem de login
             
             com.bakerymanager.entity.Sale savedSale = salesFacade.createSale(
@@ -687,6 +713,7 @@ public class POSController {
             posStatusLabel.setText("✅ Vânzare finalizată cu succes! ID: " + savedSale.getId());
             showSuccessMessage("Plată procesată cu succes!\n" +
                 "ID Vânzare: " + savedSale.getId() + "\n" +
+                "Status tranzacție: " + (savedSale.getPaymentTransactionStatus() != null ? savedSale.getPaymentTransactionStatus() : "N/A") + "\n" +
                 "Total: " + total + " lei\n" +
                 "Rest: " + amountReceived.subtract(total).setScale(2, RoundingMode.HALF_UP) + " lei");
             
@@ -763,10 +790,137 @@ public class POSController {
         alert.getDialogPane().setPrefWidth(400);
         alert.show();
     }
+
+    @FXML
+    public void openPaymentReconciliationDialog() {
+        List<PaymentTransaction> pendingTransactions = salesFacade.getPendingPaymentTransactions();
+        if (pendingTransactions == null || pendingTransactions.isEmpty()) {
+            showWarning("Nu există tranzacții în așteptare pentru reconciliere.");
+            return;
+        }
+
+        Dialog<ReconciliationRequest> dialog = new Dialog<>();
+        dialog.setTitle("Reconciliere Tranzacții POS");
+        dialog.setHeaderText("Selectați tranzacția și introduceți suma de decontare");
+
+        ButtonType reconcileButtonType = new ButtonType("Reconciliază", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(reconcileButtonType, ButtonType.CANCEL);
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new javafx.geometry.Insets(20, 20, 10, 10));
+
+        ComboBox<String> transactionCombo = new ComboBox<>();
+        transactionCombo.setPrefWidth(420);
+        Map<String, PaymentTransaction> lookup = new LinkedHashMap<>();
+        for (PaymentTransaction tx : pendingTransactions) {
+            String label = tx.getTransactionReference() + " | " + tx.getPaymentMethod()
+                + " | total=" + tx.getAmount() + " | status=" + tx.getStatus();
+            lookup.put(label, tx);
+        }
+        transactionCombo.setItems(FXCollections.observableArrayList(lookup.keySet()));
+        transactionCombo.getSelectionModel().selectFirst();
+
+        TextField settledAmountField = new TextField();
+        settledAmountField.setPromptText("Suma decontată");
+
+        TextArea detailsArea = new TextArea();
+        detailsArea.setPromptText("Detalii reconciliere (opțional)");
+        detailsArea.setPrefRowCount(3);
+
+        Label expectedAmountLabel = new Label();
+        expectedAmountLabel.setStyle("-fx-text-fill: #666;");
+
+        Runnable updateExpected = () -> {
+            PaymentTransaction selected = lookup.get(transactionCombo.getValue());
+            if (selected != null) {
+                expectedAmountLabel.setText("Suma așteptată: " + selected.getAmount() + " lei");
+                settledAmountField.setText(selected.getAmount().setScale(2, RoundingMode.HALF_UP).toPlainString());
+            }
+        };
+        updateExpected.run();
+        transactionCombo.valueProperty().addListener((obs, oldVal, newVal) -> updateExpected.run());
+
+        grid.add(new Label("Tranzacție:"), 0, 0);
+        grid.add(transactionCombo, 1, 0);
+        grid.add(expectedAmountLabel, 1, 1);
+        grid.add(new Label("Sumă decontată:"), 0, 2);
+        grid.add(settledAmountField, 1, 2);
+        grid.add(new Label("Detalii:"), 0, 3);
+        grid.add(detailsArea, 1, 3);
+
+        dialog.getDialogPane().setContent(grid);
+
+        dialog.setResultConverter(buttonType -> {
+            if (buttonType != reconcileButtonType) {
+                return null;
+            }
+            PaymentTransaction selected = lookup.get(transactionCombo.getValue());
+            if (selected == null) {
+                throw new IllegalArgumentException("Selectați o tranzacție validă.");
+            }
+            BigDecimal settled;
+            try {
+                settled = new BigDecimal(settledAmountField.getText().trim());
+            } catch (Exception e) {
+                throw new IllegalArgumentException("Suma decontată este invalidă.");
+            }
+            return new ReconciliationRequest(selected.getId(), settled, detailsArea.getText());
+        });
+
+        try {
+            Optional<ReconciliationRequest> maybe = dialog.showAndWait();
+            if (maybe.isEmpty()) {
+                return;
+            }
+
+            ReconciliationRequest request = maybe.get();
+            String operator = "Operator";
+            PaymentTransaction reconciled = salesFacade.reconcilePaymentTransaction(
+                request.transactionId,
+                request.settledAmount,
+                operator,
+                request.details
+            );
+
+            if (reconciled.getReconciliationStatus() == PaymentTransaction.ReconciliationStatus.MATCHED) {
+                showSuccessMessage("Tranzacția " + reconciled.getTransactionReference() + " a fost reconciliată cu succes.");
+                posStatusLabel.setText("✅ Reconciliere reușită: " + reconciled.getTransactionReference());
+            } else {
+                showWarning("Tranzacția " + reconciled.getTransactionReference()
+                    + " are diferență la reconciliere. Verificați detaliile.");
+                posStatusLabel.setText("⚠ Reconciliere cu diferență: " + reconciled.getTransactionReference());
+            }
+        } catch (IllegalArgumentException e) {
+            showError(e.getMessage());
+        } catch (Exception e) {
+            logger.error("Eroare la reconcilierea tranzacției", e);
+            showError("Eroare la reconcilierea tranzacției: " + e.getMessage());
+        }
+    }
+
+    private static class ReconciliationRequest {
+        private final Long transactionId;
+        private final BigDecimal settledAmount;
+        private final String details;
+
+        private ReconciliationRequest(Long transactionId, BigDecimal settledAmount, String details) {
+            this.transactionId = transactionId;
+            this.settledAmount = settledAmount;
+            this.details = details;
+        }
+    }
     
     private void calculateChange() {
         try {
+            String paymentMethod = paymentMethodCombo != null ? paymentMethodCombo.getValue() : null;
             if (amountReceivedField.getText().trim().isEmpty()) {
+                if (paymentMethod != null && !"Numerar".equals(paymentMethod)) {
+                    changeLabel.setText("0.00 lei");
+                    changeLabel.setStyle("-fx-text-fill: green;");
+                    return;
+                }
                 changeLabel.setText("0.00 lei");
                 return;
             }
@@ -778,10 +932,10 @@ public class POSController {
             
             changeLabel.setText(String.format("%.2f lei", change));
             
-            if (change.compareTo(BigDecimal.ZERO) >= 0) {
-                changeLabel.setStyle("-fx-text-fill: green;");
-            } else {
+            if ("Numerar".equals(paymentMethod) && change.compareTo(BigDecimal.ZERO) < 0) {
                 changeLabel.setStyle("-fx-text-fill: red;");
+            } else {
+                changeLabel.setStyle("-fx-text-fill: green;");
             }
             
         } catch (NumberFormatException e) {

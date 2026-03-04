@@ -3,6 +3,7 @@ package com.bakerymanager.service;
 import com.bakerymanager.entity.Sale;
 import com.bakerymanager.entity.SaleItem;
 import com.bakerymanager.entity.Product;
+import com.bakerymanager.entity.PaymentTransaction;
 import com.bakerymanager.repository.SaleRepository;
 import com.bakerymanager.repository.SaleItemRepository;
 import com.bakerymanager.repository.ProductRepository;
@@ -25,13 +26,16 @@ public class SaleService {
     private final SaleRepository saleRepository;
     private final SaleItemRepository saleItemRepository;
     private final ProductRepository productRepository;
+    private final PaymentProcessingService paymentProcessingService;
     
     public SaleService(SaleRepository saleRepository, 
                        SaleItemRepository saleItemRepository,
-                       ProductRepository productRepository) {
+                       ProductRepository productRepository,
+                       PaymentProcessingService paymentProcessingService) {
         this.saleRepository = saleRepository;
         this.saleItemRepository = saleItemRepository;
         this.productRepository = productRepository;
+        this.paymentProcessingService = paymentProcessingService;
     }
     
     @Transactional
@@ -39,13 +43,15 @@ public class SaleService {
         if (cartItems == null || cartItems.isEmpty()) {
             throw new IllegalArgumentException("Coșul este gol");
         }
+
+        String effectiveOperator = operator != null ? operator : "Operator";
         
         // Creare vânzare
         Sale sale = new Sale();
         sale.setSaleDate(LocalDateTime.now());
         sale.setPaymentMethod(paymentMethod);
         sale.setCashReceived(cashReceived != null ? cashReceived : BigDecimal.ZERO);
-        sale.setOperator(operator != null ? operator : "Operator");
+        sale.setOperator(effectiveOperator);
         
         // Calculare total și creare items
         List<SaleItem> saleItems = new ArrayList<>();
@@ -82,16 +88,29 @@ public class SaleService {
         }
         
         sale.setTotalAmount(totalAmount);
+
+        // Process payment transaction before persisting sale and stock changes.
+        BigDecimal receivedAmount = cashReceived != null ? cashReceived : totalAmount;
+        PaymentTransaction paymentTx = paymentProcessingService.processPayment(
+            paymentMethod,
+            totalAmount,
+            receivedAmount,
+            effectiveOperator
+        );
+        sale.setPaymentTransactionId(paymentTx.getId());
+        sale.setPaymentTransactionStatus(paymentTx.getStatus().name());
         
         // Calculare rest
-        if (cashReceived != null && cashReceived.compareTo(totalAmount) > 0) {
-            sale.setChangeAmount(cashReceived.subtract(totalAmount));
+        if (receivedAmount.compareTo(totalAmount) > 0) {
+            sale.setChangeAmount(receivedAmount.subtract(totalAmount));
         } else {
             sale.setChangeAmount(BigDecimal.ZERO);
         }
         
         // Salvare vânzare
         Sale savedSale = saleRepository.save(sale);
+
+        paymentProcessingService.linkSale(paymentTx.getId(), savedSale.getId(), effectiveOperator);
         
         // Batch save products and sale items
         productRepository.saveAll(productsToUpdate);
@@ -100,12 +119,24 @@ public class SaleService {
         }
         saleItemRepository.saveAll(saleItems);
         
-        logger.info("Sale saved successfully: ID={}, Total={}", savedSale.getId(), savedSale.getTotalAmount());
+        logger.info("Sale saved successfully: ID={}, Total={}, PaymentTx={}, PaymentStatus={}",
+            savedSale.getId(), savedSale.getTotalAmount(), paymentTx.getTransactionReference(), paymentTx.getStatus());
         return savedSale;
     }
     
     public List<Sale> getAllSales() {
         return saleRepository.findAll();
+    }
+
+    public List<PaymentTransaction> getPendingPaymentTransactions() {
+        return paymentProcessingService.getPendingTransactions();
+    }
+
+    public PaymentTransaction reconcilePaymentTransaction(Long transactionId,
+                                                          BigDecimal settledAmount,
+                                                          String operator,
+                                                          String details) {
+        return paymentProcessingService.reconcileTransaction(transactionId, settledAmount, operator, details);
     }
     
     public List<Sale> getSalesByDateRange(LocalDateTime startDate, LocalDateTime endDate) {

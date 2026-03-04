@@ -7,6 +7,7 @@ import com.bakerymanager.service.InvoiceService;
 import com.bakerymanager.service.PdfService;
 import com.bakerymanager.service.ReceptionNoteService;
 import com.bakerymanager.smartbill.invoicing.api.InvoicingFacade;
+import com.bakerymanager.smartbill.invoicing.api.SmartBillExportResult;
 import com.lowagie.text.DocumentException;
 import org.springframework.stereotype.Service;
 
@@ -19,13 +20,16 @@ public class InvoicingFacadeImpl implements InvoicingFacade {
     private final InvoiceService invoiceService;
     private final ReceptionNoteService receptionNoteService;
     private final PdfService pdfService;
+    private final SmartBillNirExportService smartBillNirExportService;
 
     public InvoicingFacadeImpl(InvoiceService invoiceService,
                                ReceptionNoteService receptionNoteService,
-                               PdfService pdfService) {
+                               PdfService pdfService,
+                               SmartBillNirExportService smartBillNirExportService) {
         this.invoiceService = invoiceService;
         this.receptionNoteService = receptionNoteService;
         this.pdfService = pdfService;
+        this.smartBillNirExportService = smartBillNirExportService;
     }
 
     @Override
@@ -67,5 +71,10 @@ public class InvoicingFacadeImpl implements InvoicingFacade {
     public void exportReceptionNotePdf(Long receptionNoteId, String filePath) throws IOException, DocumentException {
         ReceptionNote receptionNote = getReceptionNoteForExport(receptionNoteId);
         pdfService.generateReceptionNotePdf(receptionNote, filePath);
+    }
+
+    @Override
+    public SmartBillExportResult exportReceptionNoteToSmartBill(Long receptionNoteId) {
+        return smartBillNirExportService.exportReceptionNote(receptionNoteId);
     }
 }

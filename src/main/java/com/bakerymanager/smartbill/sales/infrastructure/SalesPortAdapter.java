@@ -1,6 +1,7 @@
 package com.bakerymanager.smartbill.sales.infrastructure;
 
 import com.bakerymanager.entity.Product;
+import com.bakerymanager.entity.PaymentTransaction;
 import com.bakerymanager.entity.Sale;
 import com.bakerymanager.service.FiscalPrinterService;
 import com.bakerymanager.service.ProductService;
@@ -44,5 +45,15 @@ public class SalesPortAdapter implements SalesPort {
     @Override
     public String getLastFiscalError() {
         return fiscalPrinterService.getLastError();
+    }
+
+    @Override
+    public List<PaymentTransaction> getPendingPaymentTransactions() {
+        return saleService.getPendingPaymentTransactions();
+    }
+
+    @Override
+    public PaymentTransaction reconcilePaymentTransaction(Long transactionId, BigDecimal settledAmount, String operator, String details) {
+        return saleService.reconcilePaymentTransaction(transactionId, settledAmount, operator, details);
     }
 }

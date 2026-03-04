@@ -101,6 +101,7 @@
                     <HBox spacing="10" alignment="CENTER">
                         <Button text="💳 Încasează" onAction="#processPayment" styleClass="button, success" prefWidth="120"/>
                         <Button text="🧾 Bon Fiscal" onAction="#printReceipt" styleClass="button, primary" prefWidth="120"/>
+                        <Button text="🔎 Reconciliere" onAction="#openPaymentReconciliationDialog" styleClass="button, warning" prefWidth="140"/>
                     </HBox>
                 </VBox>
             </VBox>
