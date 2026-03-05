@@ -1,8 +1,12 @@
 package com.bakerymanager.controller;
 
+import com.bakerymanager.entity.User;
+import com.bakerymanager.exception.AuthorizationException;
+import com.bakerymanager.service.AuthorizationService;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
+import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.layout.StackPane;
 import org.slf4j.Logger;
@@ -17,6 +21,12 @@ import java.time.format.DateTimeFormatter;
 public class MainController {
     
     private static final Logger logger = LoggerFactory.getLogger(MainController.class);
+
+    private final AuthorizationService authorizationService;
+
+    public MainController(AuthorizationService authorizationService) {
+        this.authorizationService = authorizationService;
+    }
     
     @FXML
     private Label dateTimeLabel;
@@ -29,6 +39,30 @@ public class MainController {
     
     @FXML
     private Label connectionStatusLabel;
+
+    @FXML
+    private Button dashboardButton;
+
+    @FXML
+    private Button inventoryButton;
+
+    @FXML
+    private Button productionButton;
+
+    @FXML
+    private Button schedulingButton;
+
+    @FXML
+    private Button posButton;
+
+    @FXML
+    private Button invoicesButton;
+
+    @FXML
+    private Button reportsButton;
+
+    @FXML
+    private Button settingsButton;
     
     @FXML
     private StackPane contentPane;
@@ -39,7 +73,31 @@ public class MainController {
     public void initialize() {
         updateDateTime();
         startClock();
+        configureRbacUi();
         logger.info("Main controller initialized successfully");
+    }
+
+    private void configureRbacUi() {
+        User current = authorizationService.currentUser().orElse(null);
+        if (current != null) {
+            userLabel.setText(current.getFullName() + " (" + current.getRole().getDisplayName() + ")");
+        } else {
+            userLabel.setText("N/A");
+        }
+
+        boolean operatorOrAbove = authorizationService.hasOperatorAccess();
+        boolean managerOrAdmin = authorizationService.hasAnyRole(User.Role.MANAGER, User.Role.ADMIN);
+        boolean admin = authorizationService.hasAnyRole(User.Role.ADMIN);
+
+        dashboardButton.setDisable(!operatorOrAbove);
+        posButton.setDisable(!operatorOrAbove);
+        inventoryButton.setDisable(!operatorOrAbove);
+
+        productionButton.setDisable(!managerOrAdmin);
+        schedulingButton.setDisable(!managerOrAdmin);
+        invoicesButton.setDisable(!managerOrAdmin);
+        reportsButton.setDisable(!managerOrAdmin);
+        settingsButton.setDisable(!admin);
     }
     
     private void startClock() {
@@ -59,6 +117,9 @@ public class MainController {
     
     @FXML
     public void showDashboard() {
+        if (!tryRequireOperatorOrAbove("NAV_DASHBOARD", "dashboard")) {
+            return;
+        }
         try {
             loadView("/fxml/dashboard.fxml");
             statusLabel.setText("Dashboard încărcat");
@@ -70,6 +131,9 @@ public class MainController {
     
     @FXML
     public void showInventory() {
+        if (!tryRequireOperatorOrAbove("NAV_INVENTORY", "inventory")) {
+            return;
+        }
         try {
             loadView("/fxml/inventory.fxml");
             statusLabel.setText("Modul Gestiune Stocuri încărcat");
@@ -81,6 +145,9 @@ public class MainController {
     
     @FXML
     public void showProduction() {
+        if (!tryRequireManagerOrAdmin("NAV_PRODUCTION", "production")) {
+            return;
+        }
         try {
             loadView("/fxml/production.fxml");
             statusLabel.setText("Modul Producție încărcat");
@@ -92,6 +159,9 @@ public class MainController {
     
     @FXML
     public void showPOS() {
+        if (!tryRequireOperatorOrAbove("NAV_POS", "pos")) {
+            return;
+        }
         try {
             loadView("/fxml/pos.fxml");
             statusLabel.setText("Punct de Vânzare încărcat");
@@ -103,6 +173,9 @@ public class MainController {
     
     @FXML
     public void showInvoices() {
+        if (!tryRequireManagerOrAdmin("NAV_INVOICES", "invoices")) {
+            return;
+        }
         try {
             loadView("/fxml/invoices.fxml");
             statusLabel.setText("Modul Facturi SPV încărcat");
@@ -114,6 +187,9 @@ public class MainController {
     
     @FXML
     public void showReports() {
+        if (!tryRequireManagerOrAdmin("NAV_REPORTS", "reports")) {
+            return;
+        }
         try {
             loadView("/fxml/reports.fxml");
             statusLabel.setText("Modul Rapoarte încărcat");
@@ -125,6 +201,9 @@ public class MainController {
     
     @FXML
     public void showScheduling() {
+        if (!tryRequireManagerOrAdmin("NAV_SCHEDULING", "scheduling")) {
+            return;
+        }
         try {
             loadView("/fxml/scheduling.fxml");
             statusLabel.setText("Planificator Producție încărcat");
@@ -136,6 +215,9 @@ public class MainController {
     
     @FXML
     public void showSettings() {
+        if (!tryRequireAdmin("NAV_SETTINGS", "settings")) {
+            return;
+        }
         try {
             loadView("/fxml/settings.fxml");
             statusLabel.setText("Modul Setări încărcat");
@@ -165,5 +247,35 @@ public class MainController {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.show();
+    }
+
+    private boolean tryRequireOperatorOrAbove(String action, String resource) {
+        try {
+            authorizationService.requireOperatorOrAbove(action, resource);
+            return true;
+        } catch (AuthorizationException ex) {
+            showError(ex.getMessage());
+            return false;
+        }
+    }
+
+    private boolean tryRequireManagerOrAdmin(String action, String resource) {
+        try {
+            authorizationService.requireAnyRole(action, resource, User.Role.ADMIN, User.Role.MANAGER);
+            return true;
+        } catch (AuthorizationException ex) {
+            showError(ex.getMessage());
+            return false;
+        }
+    }
+
+    private boolean tryRequireAdmin(String action, String resource) {
+        try {
+            authorizationService.requireAnyRole(action, resource, User.Role.ADMIN);
+            return true;
+        } catch (AuthorizationException ex) {
+            showError(ex.getMessage());
+            return false;
+        }
     }
 }

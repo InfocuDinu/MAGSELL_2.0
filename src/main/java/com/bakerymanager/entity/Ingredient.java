@@ -6,7 +6,12 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "ingredients")
+@Table(name = "ingredients", indexes = {
+    @Index(name = "idx_ingredients_name", columnList = "name"),
+    @Index(name = "idx_ingredients_barcode", columnList = "barcode"),
+    @Index(name = "idx_ingredients_current_stock", columnList = "current_stock"),
+    @Index(name = "idx_ingredients_minimum_stock", columnList = "minimum_stock")
+})
 public class Ingredient {
     
     @Id

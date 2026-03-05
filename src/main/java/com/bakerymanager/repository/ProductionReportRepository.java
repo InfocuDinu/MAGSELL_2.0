@@ -15,6 +15,15 @@ public interface ProductionReportRepository extends JpaRepository<ProductionRepo
     
     @Query("SELECT pr FROM ProductionReport pr JOIN FETCH pr.product WHERE pr.product = :product ORDER BY pr.productionDate DESC")
     List<ProductionReport> findByProductOrderByProductionDateDesc(@Param("product") Product product);
+
+        @Query("SELECT pr FROM ProductionReport pr JOIN FETCH pr.product " +
+            "WHERE pr.product = :product " +
+            "AND pr.productionDate >= :startDate " +
+            "AND pr.productionDate < :endDate " +
+            "ORDER BY pr.productionDate DESC")
+        List<ProductionReport> findByProductAndProductionDateBetweenOrderByProductionDateDesc(@Param("product") Product product,
+                                                         @Param("startDate") LocalDateTime startDate,
+                                                         @Param("endDate") LocalDateTime endDate);
     
     @Query("SELECT pr FROM ProductionReport pr JOIN FETCH pr.product WHERE pr.status = :status ORDER BY pr.productionDate DESC")
     List<ProductionReport> findByStatusOrderByProductionDateDesc(@Param("status") ProductionReport.ProductionStatus status);

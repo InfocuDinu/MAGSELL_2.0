@@ -1,10 +1,10 @@
 package com.bakerymanager.smartbill.production.infrastructure;
 
 import com.bakerymanager.entity.*;
+import com.bakerymanager.smartbill.production.api.dto.SchedulerAlertDto;
 import com.bakerymanager.repository.ProductionCapacityRepository;
 import com.bakerymanager.repository.ProductionScheduleEntryRepository;
 import com.bakerymanager.repository.ProductionShiftRepository;
-import com.bakerymanager.repository.ProductionOrderLineRepository;
 import com.bakerymanager.service.SchedulingService;
 import com.bakerymanager.smartbill.production.domain.SchedulingPort;
 import org.springframework.stereotype.Component;
@@ -133,5 +133,35 @@ public class SchedulingPortAdapter implements SchedulingPort {
     @Override
     public Map<String, Object> getSchedulingOverview(LocalDate startDate, LocalDate endDate) {
         return schedulingService.getSchedulingOverview(startDate, endDate);
+    }
+
+    @Override
+    public List<ProductionScheduleEntry> getScheduleEntries(LocalDate startDate, LocalDate endDate) {
+        return schedulingService.getScheduleEntries(startDate, endDate);
+    }
+
+    @Override
+    public List<ProductionScheduleEntry> autoScheduleOrders(LocalDate startDate, LocalDate endDate) {
+        return schedulingService.autoScheduleOrders(startDate, endDate);
+    }
+
+    @Override
+    public int levelResources(LocalDate startDate, LocalDate endDate) {
+        return schedulingService.levelResources(startDate, endDate);
+    }
+
+    @Override
+    public List<SchedulerAlertDto> getSchedulerAlerts(LocalDate startDate, LocalDate endDate) {
+        return schedulingService.getSchedulerAlerts(startDate, endDate);
+    }
+
+    @Override
+    public Map<String, Object> reconcileExecution(LocalDate startDate, LocalDate endDate) {
+        return schedulingService.reconcileExecution(startDate, endDate);
+    }
+
+    @Override
+    public Map<String, Object> getAdvancedSchedulingReport(LocalDate startDate, LocalDate endDate) {
+        return schedulingService.getAdvancedSchedulingReport(startDate, endDate);
     }
 }

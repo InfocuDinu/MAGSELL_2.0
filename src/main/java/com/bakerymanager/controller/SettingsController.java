@@ -1,16 +1,21 @@
 package com.bakerymanager.controller;
 
 import com.bakerymanager.entity.Ingredient;
+import com.bakerymanager.entity.User;
+import com.bakerymanager.exception.AuthorizationException;
+import com.bakerymanager.service.AccessAuditService;
+import com.bakerymanager.service.AuthorizationService;
+import com.bakerymanager.service.BackupRecoveryService;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.stage.DirectoryChooser;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
 
 import java.io.*;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Properties;
@@ -20,6 +25,18 @@ public class SettingsController {
     
     private static final Logger logger = LoggerFactory.getLogger(SettingsController.class);
     private static final String CONFIG_FILE = "config.properties";
+
+    private final AuthorizationService authorizationService;
+    private final BackupRecoveryService backupRecoveryService;
+    private final AccessAuditService accessAuditService;
+
+    public SettingsController(AuthorizationService authorizationService,
+                              BackupRecoveryService backupRecoveryService,
+                              AccessAuditService accessAuditService) {
+        this.authorizationService = authorizationService;
+        this.backupRecoveryService = backupRecoveryService;
+        this.accessAuditService = accessAuditService;
+    }
     
     @FXML
     private TextField companyNameField;
@@ -65,6 +82,7 @@ public class SettingsController {
     
     @FXML
     public void initialize() {
+        enforceAdmin("SETTINGS_VIEW", "settings.fxml");
         setupComboBoxes();
         loadSettings();
         logger.info("Settings controller initialized");
@@ -146,6 +164,7 @@ public class SettingsController {
     
     @FXML
     public void chooseBackupLocation() {
+        enforceAdmin("SETTINGS_BACKUP_LOCATION", "settings.backup.location");
         DirectoryChooser directoryChooser = new DirectoryChooser();
         directoryChooser.setTitle("Selectează locația pentru backup");
         
@@ -158,6 +177,8 @@ public class SettingsController {
     @FXML
     public void saveSettings() {
         try {
+            enforceAdmin("SETTINGS_SAVE", "config.properties");
+            String beforeState = snapshotCurrentSettings();
             validateSettings();
             
             Properties props = new Properties();
@@ -197,6 +218,14 @@ public class SettingsController {
             
             showSuccessMessage("Setările au fost salvate cu succes!\nFișier: " + configFile.getAbsolutePath());
             logger.info("Settings saved to {}", CONFIG_FILE);
+            accessAuditService.logDataChange(
+                authorizationService.currentUser().orElse(null),
+                "SETTINGS_SAVE",
+                "config.properties",
+                beforeState,
+                snapshotCurrentSettings(),
+                "Salvare setări aplicație"
+            );
             
         } catch (Exception e) {
             logger.error("Error saving settings to {}", CONFIG_FILE, e);
@@ -206,6 +235,8 @@ public class SettingsController {
     
     @FXML
     public void restoreDefaults() {
+        enforceAdmin("SETTINGS_RESTORE_DEFAULTS", "config.properties");
+        String beforeState = snapshotCurrentSettings();
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle("Confirmare Restaurare");
         alert.setHeaderText("Sunteți sigur că doriți să restaurați setările implicite?");
@@ -214,12 +245,21 @@ public class SettingsController {
         if (alert.showAndWait().get() == ButtonType.OK) {
             loadDefaultSettings();
             showSuccessMessage("Setările implicite au fost restaurate!");
+            accessAuditService.logDataChange(
+                authorizationService.currentUser().orElse(null),
+                "SETTINGS_RESTORE_DEFAULTS",
+                "config.properties",
+                beforeState,
+                snapshotCurrentSettings(),
+                "Restaurare setări implicite"
+            );
         }
     }
     
     @FXML
     public void backupNow() {
         try {
+            enforceAdmin("SETTINGS_BACKUP_NOW", "database.backup");
             String backupLocation = backupLocationField.getText();
             if (backupLocation == null || backupLocation.trim().isEmpty()) {
                 showError("Selectați o locație pentru backup!");
@@ -237,21 +277,55 @@ public class SettingsController {
                     return;
                 }
             }
-            
-            String timestamp = java.time.LocalDateTime.now().format(
-                java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
-            String backupFileName = "bakery_backup_" + timestamp + ".db";
-            File backupFile = new File(backupDir, backupFileName);
-            
-            // TODO: Implement actual database backup logic here
-            // For now, this is just a placeholder showing the backup location
-            
-            showSuccessMessage("Backup creat cu succes!\nLocație: " + backupFile.getAbsolutePath());
-            logger.info("Backup created at: {}", backupFile.getAbsolutePath());
+
+            Path backupFile = backupRecoveryService.createBackupNow();
+            showSuccessMessage("Backup creat cu succes!\nLocație: " + backupFile.toAbsolutePath());
+            logger.info("Backup created at: {}", backupFile);
+            accessAuditService.logBusinessEvent(
+                authorizationService.currentUser().orElse(null),
+                "BACKUP_CREATE_MANUAL",
+                "database.backup",
+                "Backup creat: " + backupFile
+            );
             
         } catch (Exception e) {
             logger.error("Error creating backup", e);
             showError("Eroare la crearea backup-ului: " + e.getMessage());
+        }
+    }
+
+    @FXML
+    public void restoreDatabaseFromBackup() {
+        try {
+            enforceAdmin("SETTINGS_RESTORE_DB", "database.restore");
+
+            FileChooser chooser = new FileChooser();
+            chooser.setTitle("Selectează fișier backup SQLite");
+            chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("SQLite DB", "*.db", "*.bak"));
+
+            File selected = chooser.showOpenDialog(new Stage());
+            if (selected == null) {
+                return;
+            }
+
+            if (!backupRecoveryService.validateBackup(selected.toPath())) {
+                showError("Fișierul selectat nu a trecut validarea de integritate.");
+                return;
+            }
+
+            Path preRestore = backupRecoveryService.restoreFromBackup(selected.toPath());
+            showSuccessMessage("Restore finalizat cu succes.\nBackup pre-restore: " + preRestore +
+                "\nReporniți aplicația pentru reconectare sigură la baza restaurată.");
+            logger.info("Database restored from {}", selected.getAbsolutePath());
+            accessAuditService.logBusinessEvent(
+                authorizationService.currentUser().orElse(null),
+                "BACKUP_RESTORE",
+                "database.restore",
+                "Restore din " + selected.getAbsolutePath() + ", pre-restore backup=" + preRestore
+            );
+        } catch (Exception e) {
+            logger.error("Error restoring database", e);
+            showError("Eroare la restaurare backup: " + e.getMessage());
         }
     }
     
@@ -291,5 +365,29 @@ public class SettingsController {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.show();
+    }
+
+    private void enforceAdmin(String action, String resource) {
+        try {
+            authorizationService.requireAnyRole(action, resource, User.Role.ADMIN);
+        } catch (AuthorizationException ex) {
+            showError(ex.getMessage());
+            throw ex;
+        }
+    }
+
+    private String snapshotCurrentSettings() {
+        return "company=" + safe(companyNameField.getText())
+            + ", cui=" + safe(cuiField.getText())
+            + ", stockAlert=" + safe(stockAlertField.getText())
+            + ", currency=" + safe(currencyField.getText())
+            + ", vat=" + safe(tvaField.getText())
+            + ", autoBackup=" + autoBackupCheck.isSelected()
+            + ", backupFrequency=" + safe(backupFrequencyCombo.getValue())
+            + ", backupLocation=" + safe(backupLocationField.getText());
+    }
+
+    private String safe(String value) {
+        return value == null ? "" : value.trim();
     }
 }

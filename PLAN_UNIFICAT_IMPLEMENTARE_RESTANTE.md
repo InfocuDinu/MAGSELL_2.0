@@ -39,17 +39,17 @@
   - [x] Validări + reconciliere tranzacții
   - [x] Status-uri tranzacție și audit
 
-- [ ] **Barcode Scanning (inventory intake/outtake)**
+- [x] **Barcode Scanning (inventory intake/outtake)**
   - Flux dedicat recepție/consum stoc
   - Mapping cod bare → articol/lot
   - Traseu complet în mișcări de stoc
 
-- [ ] **Multi-location (depozite multiple)**
+- [x] **Multi-location (depozite multiple)**
   - Model date locații
   - Stocuri separate per locație
   - Transfer între locații + raportare
 
-- [ ] **RBAC (permisiuni utilizator)**
+- [x] **RBAC (permisiuni utilizator)**
   - Roluri: Admin / Manager / Operator
   - Restricții UI + service + endpoint level
   - Audit acces operațiuni sensibile
@@ -58,24 +58,24 @@
 
 ## B. FAZA 5 – Producție/Operaționalizare (prioritate ridicată)
 
-- [ ] **Migrare DB H2 → SQLite persistent**
-  - Scripturi migrare + validări date
-  - Fallback/rollback plan
+- [x] **Migrare DB H2 → SQLite persistent** *(tooling tehnic livrat: utilitar migrare + validare + fallback/rollback documentat; execuția pe date reale rămâne task operațional controlat)*
+  - [x] Scripturi migrare + validări date
+  - [x] Fallback/rollback plan
 
-- [ ] **Backup & Recovery automat**
-  - Programare backup periodic
-  - Restaurare testată (RTO/RPO minim)
+- [x] **Backup & Recovery automat** *(implementat: scheduler backup periodic + restaurare DB validată + ghid operațional)*
+  - [x] Programare backup periodic
+  - [x] Restaurare testată (RTO/RPO minim)
 
-- [ ] **Audit Trail complet**
-  - Evenimente cheie (cine/ce/când)
-  - Evidență modificări critice
+- [x] **Audit Trail complet** *(implementat: jurnalizare business + data-change, cine/ce/când, before/after pentru operațiuni critice)*
+  - [x] Evenimente cheie (cine/ce/când)
+  - [x] Evidență modificări critice
 
-- [ ] **Security hardening**
-  - Criptare date sensibile
-  - Management chei/API keys
-  - Politici acces / rotație chei
+- [x] **Security hardening** *(implementat: BCrypt parole + policy secrete/env + validare rotație chei)*
+  - [x] Criptare date sensibile
+  - [x] Management chei/API keys
+  - [x] Politici acces / rotație chei
 
-- [ ] **Performance tuning**
+- [x] **Performance tuning** *(implementat: caching selectiv Caffeine + optimizare query-uri index-friendly + indexare entități + monitoring latențe/throughput)*
   - Caching selectiv
   - Query optimization + indexare
   - Monitoring latențe/throughput
@@ -85,7 +85,7 @@
 ## C. Restanțe specifice din documentele de raportare financiară (Point 9)
 
 ### C1. Enhancements calcul costuri (tehnic)
-- [ ] FEFO complet pentru costuri (nu doar fallback simplificat)
+- [x] FEFO complet pentru costuri (implementat: calcul cost materie primă pe loturi FEFO cu fallback controlat la preț achiziție)
 - [ ] Integrare cost manoperă din scheduling (Point 8)
 - [ ] Recursivitate completă costuri pe rețete multi-level
 - [ ] VAT deductibil din facturi de achiziție
@@ -105,13 +105,13 @@
 
 ## D. Restanțe/next steps din Scheduler (Point 8)
 
-- [ ] Integrare completă în navigația principală (menu/navbar routing)
-- [ ] Binding final FXML + action handlers pentru toate fluxurile de scheduling
-- [ ] Auto-scheduling engine (alocare optimă)
-- [ ] Resource leveling (echilibrare încărcare resurse)
-- [ ] Alerts & notifications (over-capacity, deadlines, indisponibilitate)
-- [ ] Integrare execuție producție în timp real vs plan
-- [ ] Raportare avansată scheduler (Gantt/heatmap/bottleneck)
+- [x] Integrare completă în navigația principală (menu/navbar routing) *(implementat: buton Scheduler în `main_view.fxml` + rutare `showScheduling` + RBAC manager/admin)*
+- [x] Binding final FXML + action handlers pentru toate fluxurile de scheduling *(implementat: controller FXML-based + handlers `createShift`, `refreshScheduler`, `autoSchedule`, `levelResources`, `showAlerts`, `syncExecution`, `showAdvancedReport`)*
+- [x] Auto-scheduling engine (alocare optimă) *(implementat: `SchedulingService.autoScheduleOrders` + expunere prin facade/port/adapter)*
+- [x] Resource leveling (echilibrare încărcare resurse) *(implementat: `SchedulingService.levelResources` cu redistribuire pe schimburi eligibile)*
+- [x] Alerts & notifications (over-capacity, deadlines, indisponibilitate) *(implementat: `SchedulerAlertDto` + `SchedulingService.getSchedulerAlerts` + afișare în UI)*
+- [x] Integrare execuție producție în timp real vs plan *(implementat: `SchedulingService.reconcileExecution` + acțiune UI `syncExecution`)*
+- [x] Raportare avansată scheduler (Gantt/heatmap/bottleneck) *(implementat: `SchedulingService.getAdvancedSchedulingReport` + expunere/afișare în UI)*
 
 ---
 

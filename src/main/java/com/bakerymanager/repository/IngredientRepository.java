@@ -13,6 +13,9 @@ import java.util.Optional;
 public interface IngredientRepository extends JpaRepository<Ingredient, Long> {
     
     Optional<Ingredient> findByName(String name);
+
+    @Query("SELECT i FROM Ingredient i WHERE i.barcode IS NOT NULL AND LOWER(i.barcode) = LOWER(:barcode)")
+    List<Ingredient> findByBarcodeNormalized(@Param("barcode") String barcode);
     
     List<Ingredient> findByNameContainingIgnoreCase(String name);
     

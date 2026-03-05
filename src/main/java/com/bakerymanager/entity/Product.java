@@ -7,7 +7,12 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
-@Table(name = "products")
+@Table(name = "products", indexes = {
+    @Index(name = "idx_products_name", columnList = "name"),
+    @Index(name = "idx_products_barcode", columnList = "barcode"),
+    @Index(name = "idx_products_active", columnList = "is_active"),
+    @Index(name = "idx_products_stock", columnList = "physical_stock")
+})
 public class Product {
     
     @Id

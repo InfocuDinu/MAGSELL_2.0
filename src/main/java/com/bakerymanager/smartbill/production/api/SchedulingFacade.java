@@ -1,6 +1,7 @@
 package com.bakerymanager.smartbill.production.api;
 
 import com.bakerymanager.entity.*;
+import com.bakerymanager.smartbill.production.api.dto.SchedulerAlertDto;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -64,4 +65,16 @@ public interface SchedulingFacade {
     
     // Reporting & Analysis
     Map<String, Object> getSchedulingOverview(LocalDate startDate, LocalDate endDate);
+
+    List<ProductionScheduleEntry> getScheduleEntries(LocalDate startDate, LocalDate endDate);
+
+    List<ProductionScheduleEntry> autoScheduleOrders(LocalDate startDate, LocalDate endDate);
+
+    int levelResources(LocalDate startDate, LocalDate endDate);
+
+    List<SchedulerAlertDto> getSchedulerAlerts(LocalDate startDate, LocalDate endDate);
+
+    Map<String, Object> reconcileExecution(LocalDate startDate, LocalDate endDate);
+
+    Map<String, Object> getAdvancedSchedulingReport(LocalDate startDate, LocalDate endDate);
 }

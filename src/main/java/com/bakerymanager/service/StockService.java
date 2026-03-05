@@ -21,15 +21,21 @@ public class StockService {
     private final StockMovementRepository stockMovementRepository;
     private final UnitConversionService unitConversionService;
     private final UserService userService;
+    private final AuthorizationService authorizationService;
+    private final AccessAuditService accessAuditService;
 
     public StockService(IngredientBatchRepository ingredientBatchRepository,
                         StockMovementRepository stockMovementRepository,
                         UnitConversionService unitConversionService,
-                        UserService userService) {
+                        UserService userService,
+                        AuthorizationService authorizationService,
+                        AccessAuditService accessAuditService) {
         this.ingredientBatchRepository = ingredientBatchRepository;
         this.stockMovementRepository = stockMovementRepository;
         this.unitConversionService = unitConversionService;
         this.userService = userService;
+        this.authorizationService = authorizationService;
+        this.accessAuditService = accessAuditService;
     }
 
     @Transactional
@@ -54,6 +60,7 @@ public class StockService {
                                         String sourceType,
                                         Long sourceId,
                                         String reason) {
+        authorizationService.requireOperatorOrAbove("STOCK_RECEIVE", ingredient != null ? ingredient.getName() : "UNKNOWN");
         String targetUnit = resolveUnit(unit, ingredient);
         BigDecimal normalizedQty = unitConversionService.convert(quantity, unit, targetUnit);
 
@@ -67,6 +74,15 @@ public class StockService {
         batch.setSourceId(sourceId);
 
         IngredientBatch saved = ingredientBatchRepository.save(batch);
+
+        accessAuditService.logDataChange(
+            userService.getCurrentUser().orElse(null),
+            "STOCK_RECEIVE_BATCH",
+            ingredient != null ? ingredient.getName() : "ingredient.unknown",
+            "batch=NEW",
+            "batch=" + saved.getBatchCode() + ", qty=" + saved.getQuantity(),
+            "Recepție lot nou"
+        );
 
         stockMovementRepository.save(createMovement(
             ingredient,
@@ -99,6 +115,7 @@ public class StockService {
                                           String sourceType,
                                           Long sourceId,
                                           String reason) {
+        authorizationService.requireOperatorOrAbove("STOCK_CONSUME_FEFO", ingredient != null ? ingredient.getName() : "UNKNOWN");
         return consumeFromBatches(
             ingredient,
             quantityNeeded,
@@ -112,12 +129,74 @@ public class StockService {
     }
 
     @Transactional
+    public StockMovement consumeFromSpecificBatch(Ingredient ingredient,
+                                                  String batchCode,
+                                                  BigDecimal quantityNeeded,
+                                                  String unit,
+                                                  String sourceType,
+                                                  Long sourceId,
+                                                  String reason) {
+        authorizationService.requireOperatorOrAbove("STOCK_CONSUME_BATCH", ingredient != null ? ingredient.getName() : "UNKNOWN");
+        validatePositiveQuantity(quantityNeeded);
+        if (ingredient == null || ingredient.getId() == null) {
+            throw new IllegalArgumentException("Ingredient is required");
+        }
+        if (batchCode == null || batchCode.trim().isEmpty()) {
+            throw new IllegalArgumentException("Batch code is required");
+        }
+
+        String targetUnit = resolveUnit(unit, ingredient);
+        BigDecimal normalizedNeeded = unitConversionService.convert(quantityNeeded, unit, targetUnit);
+
+        IngredientBatch batch = ingredientBatchRepository
+            .findAvailableBatchByIngredientAndCode(ingredient.getId(), batchCode.trim())
+            .orElseThrow(() -> new IllegalStateException(
+                "Batch not found or depleted for ingredient " + ingredient.getName() + ": " + batchCode));
+
+        BigDecimal available = batch.getQuantity() != null ? batch.getQuantity() : BigDecimal.ZERO;
+        BigDecimal before = available;
+        if (available.compareTo(normalizedNeeded) < 0) {
+            throw new IllegalStateException("Insufficient stock in batch " + batchCode + ". Missing: " +
+                normalizedNeeded.subtract(available));
+        }
+
+        batch.setQuantity(available.subtract(normalizedNeeded));
+        ingredientBatchRepository.save(batch);
+
+        accessAuditService.logDataChange(
+            userService.getCurrentUser().orElse(null),
+            "STOCK_CONSUME_BATCH",
+            ingredient != null ? ingredient.getName() : "ingredient.unknown",
+            "batch=" + batch.getBatchCode() + ", qty=" + before,
+            "batch=" + batch.getBatchCode() + ", qty=" + batch.getQuantity(),
+            "Consum specific lot"
+        );
+
+        StockMovement movement = createMovement(
+            ingredient,
+            batch,
+            StockMovement.MovementType.CONSUMPTION,
+            normalizedNeeded,
+            targetUnit,
+            sourceType,
+            sourceId,
+            reason,
+            "Consum lot scanat: " + batch.getBatchCode()
+        );
+
+        return stockMovementRepository.save(movement);
+    }
+
+    @Transactional
     public StockMovement transferInternal(Ingredient ingredient,
                                           BigDecimal quantity,
                                           String unit,
                                           String fromLocation,
                                           String toLocation,
                                           String reason) {
+        authorizationService.requireAnyRole("STOCK_TRANSFER_INTERNAL", ingredient != null ? ingredient.getName() : "UNKNOWN",
+            com.bakerymanager.entity.User.Role.ADMIN,
+            com.bakerymanager.entity.User.Role.MANAGER);
         validatePositiveQuantity(quantity);
         String targetUnit = resolveUnit(unit, ingredient);
         BigDecimal normalizedQty = unitConversionService.convert(quantity, unit, targetUnit);
@@ -137,6 +216,12 @@ public class StockService {
             reason,
             notes
         );
+        accessAuditService.logBusinessEvent(
+            userService.getCurrentUser().orElse(null),
+            "STOCK_TRANSFER_INTERNAL",
+            ingredient != null ? ingredient.getName() : "ingredient.unknown",
+            "Transfer " + source + " -> " + destination + ", qty=" + normalizedQty
+        );
         return stockMovementRepository.save(movement);
     }
 
@@ -145,6 +230,9 @@ public class StockService {
                                            BigDecimal quantityDelta,
                                            String unit,
                                            String reason) {
+        authorizationService.requireAnyRole("STOCK_ADJUST", ingredient != null ? ingredient.getName() : "UNKNOWN",
+            com.bakerymanager.entity.User.Role.ADMIN,
+            com.bakerymanager.entity.User.Role.MANAGER);
         if (quantityDelta == null || quantityDelta.compareTo(BigDecimal.ZERO) == 0) {
             throw new IllegalArgumentException("Quantity delta must be different from zero");
         }
@@ -171,6 +259,9 @@ public class StockService {
                                                 BigDecimal quantity,
                                                 String unit,
                                                 String reason) {
+        authorizationService.requireAnyRole("STOCK_RETURN_SUPPLIER", ingredient != null ? ingredient.getName() : "UNKNOWN",
+            com.bakerymanager.entity.User.Role.ADMIN,
+            com.bakerymanager.entity.User.Role.MANAGER);
         validatePositiveQuantity(quantity);
         return consumeFromBatches(
             ingredient,
@@ -189,6 +280,9 @@ public class StockService {
                                              BigDecimal quantity,
                                              String unit,
                                              String reason) {
+        authorizationService.requireAnyRole("STOCK_REGISTER_WASTE", ingredient != null ? ingredient.getName() : "UNKNOWN",
+            com.bakerymanager.entity.User.Role.ADMIN,
+            com.bakerymanager.entity.User.Role.MANAGER);
         validatePositiveQuantity(quantity);
         return consumeFromBatches(
             ingredient,
@@ -260,9 +354,19 @@ public class StockService {
                 continue;
             }
 
+            BigDecimal before = available;
             BigDecimal used = available.min(remaining);
             batch.setQuantity(available.subtract(used));
             ingredientBatchRepository.save(batch);
+
+            accessAuditService.logDataChange(
+                userService.getCurrentUser().orElse(null),
+                "STOCK_BATCH_" + movementType.name(),
+                ingredient != null ? ingredient.getName() : "ingredient.unknown",
+                "batch=" + batch.getBatchCode() + ", qty=" + before,
+                "batch=" + batch.getBatchCode() + ", qty=" + batch.getQuantity(),
+                "Mișcare " + movementType.name() + ", consum=" + used
+            );
 
             StockMovement movement = createMovement(
                 ingredient,

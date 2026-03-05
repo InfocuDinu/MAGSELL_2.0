@@ -39,6 +39,7 @@ public class User {
     public enum Role {
         ADMIN("Administrator"),
         MANAGER("Manager"),
+        OPERATOR("Operator"),
         CASHIER("Casier"),
         PRODUCTION("Producție");
         

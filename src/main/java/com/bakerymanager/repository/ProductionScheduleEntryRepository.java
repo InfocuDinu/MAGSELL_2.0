@@ -1,15 +1,12 @@
 package com.bakerymanager.repository;
 
 import com.bakerymanager.entity.ProductionScheduleEntry;
-import com.bakerymanager.entity.ProductionShift;
-import com.bakerymanager.entity.ProductionOrderLine;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -29,6 +26,17 @@ public interface ProductionScheduleEntryRepository extends JpaRepository<Product
     List<ProductionScheduleEntry> findScheduledEntriesByDateRange(
             @Param("start") LocalDateTime start,
             @Param("end") LocalDateTime end
+    );
+
+    @Query("SELECT e FROM ProductionScheduleEntry e " +
+          "JOIN FETCH e.productionShift s " +
+          "JOIN FETCH e.productionOrderLine ol " +
+          "JOIN FETCH ol.product p " +
+          "WHERE s.shiftStart >= :start AND s.shiftEnd <= :end " +
+          "ORDER BY s.shiftStart ASC, e.priority DESC")
+    List<ProductionScheduleEntry> findEntriesByDateRange(
+           @Param("start") LocalDateTime start,
+           @Param("end") LocalDateTime end
     );
     
     @Query("SELECT e FROM ProductionScheduleEntry e WHERE e.productionShift.id = :shiftId " +

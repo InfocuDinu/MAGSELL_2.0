@@ -1,8 +1,13 @@
 package com.bakerymanager.controller;
 
 import com.bakerymanager.entity.Ingredient;
+import com.bakerymanager.entity.User;
 import com.bakerymanager.entity.Waste;
+import com.bakerymanager.exception.AuthorizationException;
 import com.bakerymanager.smartbill.inventory.api.InventoryFacade;
+import com.bakerymanager.service.AuthorizationService;
+import com.bakerymanager.service.IngredientService;
+import com.bakerymanager.service.MultiLocationInventoryService;
 import com.bakerymanager.service.ReplenishmentService;
 import com.bakerymanager.service.StockService;
 import com.bakerymanager.service.UserService;
@@ -25,7 +30,9 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -41,17 +48,26 @@ public class InventoryController {
     private static final Logger logger = LoggerFactory.getLogger(InventoryController.class);
     
     private final InventoryFacade inventoryFacade;
+    private final AuthorizationService authorizationService;
+    private final IngredientService ingredientService;
+    private final MultiLocationInventoryService multiLocationInventoryService;
     private final StockService stockService;
     private final WasteService wasteService;
     private final UserService userService;
     private final ReplenishmentService replenishmentService;
     
     public InventoryController(InventoryFacade inventoryFacade,
+                               AuthorizationService authorizationService,
+                               IngredientService ingredientService,
+                               MultiLocationInventoryService multiLocationInventoryService,
                                StockService stockService,
                                WasteService wasteService,
                                UserService userService,
                                ReplenishmentService replenishmentService) {
         this.inventoryFacade = inventoryFacade;
+        this.authorizationService = authorizationService;
+        this.ingredientService = ingredientService;
+        this.multiLocationInventoryService = multiLocationInventoryService;
         this.stockService = stockService;
         this.wasteService = wasteService;
         this.userService = userService;
@@ -180,6 +196,7 @@ public class InventoryController {
     public void loadIngredients() {
         try {
             List<Ingredient> ingredients = inventoryFacade.getAllIngredients();
+            ingredients.forEach(multiLocationInventoryService::syncIngredientLocationStock);
             ingredientList.clear();
             ingredientList.addAll(ingredients);
             updateStatistics();
@@ -227,6 +244,9 @@ public class InventoryController {
     
     @FXML
     public void saveIngredient() {
+        if (!requireManagerOrAdmin("INVENTORY_SAVE", "ingredient")) {
+            return;
+        }
         try {
             // Validate required fields
             if (nameField.getText() == null || nameField.getText().trim().isEmpty()) {
@@ -277,6 +297,7 @@ public class InventoryController {
             
             // Save ingredient
             inventoryFacade.saveIngredient(ingredient);
+            multiLocationInventoryService.syncIngredientLocationStock(ingredient);
             
             // Reload and update
             loadIngredients();
@@ -314,6 +335,9 @@ public class InventoryController {
     
     @FXML
     public void deleteIngredient() {
+        if (!requireManagerOrAdmin("INVENTORY_DELETE", "ingredient")) {
+            return;
+        }
         if (selectedIngredient == null) {
             showError("Selectați un ingredient din tabel pentru a-l șterge!");
             return;
@@ -343,6 +367,9 @@ public class InventoryController {
 
     @FXML
     public void transferInternal() {
+        if (!requireManagerOrAdmin("INVENTORY_TRANSFER", "ingredient.transfer")) {
+            return;
+        }
         Ingredient ingredient = requireSelectedIngredient();
         if (ingredient == null) {
             return;
@@ -353,15 +380,19 @@ public class InventoryController {
             return;
         }
 
-        String fromLocation = promptText("Transfer intern", "Locație sursă:");
-        if (fromLocation == null) {
+        String fromWarehouse = normalizeOptionalField(promptText("Transfer intern", "Depozit sursă:"));
+        if (fromWarehouse == null) {
             return;
         }
 
-        String toLocation = promptText("Transfer intern", "Locație destinație:");
-        if (toLocation == null) {
+        String fromZone = normalizeOptionalField(promptText("Transfer intern", "Zonă sursă (opțional):"));
+
+        String toWarehouse = normalizeOptionalField(promptText("Transfer intern", "Depozit destinație:"));
+        if (toWarehouse == null) {
             return;
         }
+
+        String toZone = normalizeOptionalField(promptText("Transfer intern", "Zonă destinație (opțional):"));
 
         String reason = promptText("Transfer intern", "Motiv transfer:");
         if (reason == null || reason.isBlank()) {
@@ -371,7 +402,16 @@ public class InventoryController {
 
         try {
             String unit = ingredient.getUnitOfMeasure() != null ? ingredient.getUnitOfMeasure().name() : null;
-            stockService.transferInternal(ingredient, quantity, unit, fromLocation, toLocation, reason);
+            multiLocationInventoryService.transferBetweenLocations(
+                ingredient,
+                quantity,
+                unit,
+                fromWarehouse,
+                fromZone,
+                toWarehouse,
+                toZone,
+                reason
+            );
             setStatus("Transfer intern înregistrat pentru " + ingredient.getName());
             showSuccessMessage("Transfer intern înregistrat cu succes.");
         } catch (Exception e) {
@@ -382,6 +422,9 @@ public class InventoryController {
 
     @FXML
     public void adjustStock() {
+        if (!requireManagerOrAdmin("INVENTORY_ADJUST", "ingredient.adjust")) {
+            return;
+        }
         Ingredient ingredient = requireSelectedIngredient();
         if (ingredient == null) {
             return;
@@ -410,6 +453,7 @@ public class InventoryController {
 
             ingredient.setCurrentStock(ingredient.getCurrentStock().add(delta));
             inventoryFacade.saveIngredient(ingredient);
+            multiLocationInventoryService.applyDeltaToPrimaryLocation(ingredient, delta);
 
             loadIngredients();
             setStatus("Ajustare stoc înregistrată pentru " + ingredient.getName());
@@ -422,6 +466,9 @@ public class InventoryController {
 
     @FXML
     public void returnToSupplier() {
+        if (!requireManagerOrAdmin("INVENTORY_RETURN", "ingredient.return")) {
+            return;
+        }
         Ingredient ingredient = requireSelectedIngredient();
         if (ingredient == null) {
             return;
@@ -444,6 +491,7 @@ public class InventoryController {
 
             ingredient.setCurrentStock(ingredient.getCurrentStock().subtract(quantity));
             inventoryFacade.saveIngredient(ingredient);
+            multiLocationInventoryService.applyDeltaToPrimaryLocation(ingredient, quantity.negate());
 
             loadIngredients();
             setStatus("Retur furnizor înregistrat pentru " + ingredient.getName());
@@ -456,6 +504,9 @@ public class InventoryController {
 
     @FXML
     public void registerWaste() {
+        if (!requireManagerOrAdmin("INVENTORY_WASTE", "ingredient.waste")) {
+            return;
+        }
         Ingredient ingredient = requireSelectedIngredient();
         if (ingredient == null) {
             return;
@@ -494,6 +545,7 @@ public class InventoryController {
 
             ingredient.setCurrentStock(ingredient.getCurrentStock().subtract(quantity));
             inventoryFacade.saveIngredient(ingredient);
+            multiLocationInventoryService.applyDeltaToPrimaryLocation(ingredient, quantity.negate());
 
             loadIngredients();
             setStatus("Pierdere/Casare înregistrată pentru " + ingredient.getName());
@@ -501,6 +553,140 @@ public class InventoryController {
         } catch (Exception e) {
             logger.error("Error during waste registration", e);
             showError("Eroare la înregistrare pierdere/casare: " + e.getMessage());
+        }
+    }
+
+    @FXML
+    public void barcodeReception() {
+        if (!requireOperatorOrAbove("INVENTORY_BARCODE_RECEIPT", "ingredient.barcode.receipt")) {
+            return;
+        }
+        String barcode = promptText("Recepție prin scanare", "Scanați/introduceți codul de bare:");
+        if (barcode == null || barcode.isBlank()) {
+            return;
+        }
+
+        Ingredient ingredient = findIngredientByBarcode(barcode);
+        if (ingredient == null) {
+            return;
+        }
+
+        BigDecimal quantity = promptDecimal("Recepție prin scanare", "Cantitate recepționată:");
+        if (quantity == null) {
+            return;
+        }
+
+        String batchCodeInput = promptText("Recepție prin scanare", "Cod lot (opțional):");
+        String batchCode = normalizeOptionalField(batchCodeInput);
+        if (batchCode == null) {
+            batchCode = "BC-" + barcode.trim() + "-" + System.currentTimeMillis();
+        }
+
+        String expiryText = promptText("Recepție prin scanare", "Data expirare (YYYY-MM-DD, opțional):");
+        LocalDate expiryDate;
+        try {
+            expiryDate = parseOptionalDate(expiryText);
+        } catch (IllegalArgumentException ex) {
+            showError(ex.getMessage());
+            return;
+        }
+
+        String reasonInput = promptText("Recepție prin scanare", "Motiv/observații (opțional):");
+        String reason = normalizeOptionalField(reasonInput);
+        if (reason == null) {
+            reason = "Recepție scanare cod bare: " + barcode.trim();
+        }
+
+        try {
+            String unit = ingredient.getUnitOfMeasure() != null ? ingredient.getUnitOfMeasure().name() : null;
+            stockService.receiveBatch(
+                ingredient,
+                quantity,
+                unit,
+                expiryDate,
+                LocalDateTime.now(),
+                batchCode,
+                "BARCODE_SCANNER_INTAKE",
+                ingredient.getId(),
+                reason
+            );
+
+            ingredient.setCurrentStock(ingredient.getCurrentStock().add(quantity));
+            inventoryFacade.saveIngredient(ingredient);
+            multiLocationInventoryService.applyDeltaToPrimaryLocation(ingredient, quantity);
+
+            loadIngredients();
+            setStatus("Recepție scanată: " + ingredient.getName() + " (lot " + batchCode + ")");
+            showSuccessMessage("Recepție înregistrată cu succes pentru " + ingredient.getName());
+        } catch (Exception e) {
+            logger.error("Error during barcode intake", e);
+            showError("Eroare la recepția prin scanare: " + e.getMessage());
+        }
+    }
+
+    @FXML
+    public void barcodeConsumption() {
+        if (!requireOperatorOrAbove("INVENTORY_BARCODE_CONSUMPTION", "ingredient.barcode.consumption")) {
+            return;
+        }
+        String barcode = promptText("Consum prin scanare", "Scanați/introduceți codul de bare:");
+        if (barcode == null || barcode.isBlank()) {
+            return;
+        }
+
+        Ingredient ingredient = findIngredientByBarcode(barcode);
+        if (ingredient == null) {
+            return;
+        }
+
+        BigDecimal quantity = promptDecimal("Consum prin scanare", "Cantitate consumată:");
+        if (quantity == null) {
+            return;
+        }
+
+        String lotCode = normalizeOptionalField(
+            promptText("Consum prin scanare", "Cod lot (opțional; gol = FEFO automat):")
+        );
+        String reasonInput = promptText("Consum prin scanare", "Motiv/observații (opțional):");
+        String reason = normalizeOptionalField(reasonInput);
+        if (reason == null) {
+            reason = "Consum scanare cod bare: " + barcode.trim();
+        }
+
+        try {
+            String unit = ingredient.getUnitOfMeasure() != null ? ingredient.getUnitOfMeasure().name() : null;
+
+            if (lotCode != null) {
+                stockService.consumeFromSpecificBatch(
+                    ingredient,
+                    lotCode,
+                    quantity,
+                    unit,
+                    "BARCODE_SCANNER_OUTTAKE",
+                    ingredient.getId(),
+                    reason
+                );
+            } else {
+                stockService.consumeFefo(
+                    ingredient,
+                    quantity,
+                    unit,
+                    "BARCODE_SCANNER_OUTTAKE",
+                    ingredient.getId(),
+                    reason
+                );
+            }
+
+            ingredient.setCurrentStock(ingredient.getCurrentStock().subtract(quantity));
+            inventoryFacade.saveIngredient(ingredient);
+            multiLocationInventoryService.applyDeltaToPrimaryLocation(ingredient, quantity.negate());
+
+            loadIngredients();
+            setStatus("Consum scanat: " + ingredient.getName() + (lotCode != null ? " (lot " + lotCode + ")" : ""));
+            showSuccessMessage("Consum înregistrat cu succes pentru " + ingredient.getName());
+        } catch (Exception e) {
+            logger.error("Error during barcode consumption", e);
+            showError("Eroare la consumul prin scanare: " + e.getMessage());
         }
     }
     
@@ -574,6 +760,9 @@ public class InventoryController {
 
     @FXML
     public void runAssistedInventory() {
+        if (!requireManagerOrAdmin("INVENTORY_ASSISTED_COUNT", "inventory.assisted")) {
+            return;
+        }
         try {
             Dialog<ButtonType> filterDialog = new Dialog<>();
             filterDialog.setTitle("Inventariere asistată");
@@ -686,6 +875,9 @@ public class InventoryController {
 
     @FXML
     public void runSmartReplenishment() {
+        if (!requireManagerOrAdmin("INVENTORY_REPLENISHMENT", "inventory.replenishment")) {
+            return;
+        }
         try {
             List<ReplenishmentService.ReplenishmentSuggestion> suggestions = replenishmentService.generateTodaySuggestions();
             if (suggestions.isEmpty()) {
@@ -737,6 +929,9 @@ public class InventoryController {
 
     @FXML
     public void exportSmartReplenishmentCsv() {
+        if (!requireManagerOrAdmin("INVENTORY_EXPORT_REPLENISHMENT", "inventory.replenishment.export")) {
+            return;
+        }
         try {
             List<ReplenishmentService.ReplenishmentSuggestion> suggestions = replenishmentService.generateTodaySuggestions();
             if (suggestions.isEmpty()) {
@@ -783,6 +978,54 @@ public class InventoryController {
         } catch (Exception e) {
             logger.error("Unexpected error exporting replenishment CSV", e);
             showError("Eroare neașteptată la export reaprovizionare: " + e.getMessage());
+        }
+    }
+
+    @FXML
+    public void showMultiLocationReport() {
+        if (!requireManagerOrAdmin("INVENTORY_MULTI_LOCATION_REPORT", "inventory.multi-location.report")) {
+            return;
+        }
+        try {
+            List<MultiLocationInventoryService.LocationStockRow> rows = multiLocationInventoryService.buildLocationStockRows();
+            if (rows.isEmpty()) {
+                showInfoDialog("Raport multi-location", "Nu există stocuri distribuite pe locații.");
+                return;
+            }
+
+            StringBuilder sb = new StringBuilder();
+            sb.append("=== RAPORT STOCURI PE LOCAȚII ===\n");
+            sb.append(String.format("%-25s | %-20s | %-15s | %10s | %s\n", "Articol", "Depozit", "Zonă", "Cantitate", "UM"));
+            sb.append("--------------------------------------------------------------------------------------------------------\n");
+
+            for (MultiLocationInventoryService.LocationStockRow row : rows) {
+                sb.append(String.format("%-25s | %-20s | %-15s | %10.3f | %s\n",
+                    trimForReport(row.ingredientName(), 25),
+                    trimForReport(row.warehouse(), 20),
+                    trimForReport(row.zone(), 15),
+                    row.quantity(),
+                    row.unit()
+                ));
+            }
+
+            TextArea area = new TextArea(sb.toString());
+            area.setEditable(false);
+            area.setWrapText(false);
+            area.setPrefRowCount(20);
+            area.setPrefColumnCount(110);
+
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Raport Multi-location");
+            alert.setHeaderText("Stocuri separate per depozit/zonă");
+            alert.getDialogPane().setContent(area);
+            alert.getDialogPane().setPrefWidth(1100);
+            alert.setContentText(null);
+            alert.show();
+
+            setStatus("Raport multi-location generat: " + rows.size() + " poziții");
+        } catch (Exception e) {
+            logger.error("Error generating multi-location report", e);
+            showError("Eroare la generarea raportului multi-location: " + e.getMessage());
         }
     }
 
@@ -904,6 +1147,58 @@ public class InventoryController {
         return normalized.isEmpty() ? null : normalized;
     }
 
+    private Ingredient findIngredientByBarcode(String barcode) {
+        String normalizedBarcode = normalizeOptionalField(barcode);
+        if (normalizedBarcode == null) {
+            showError("Codul de bare este obligatoriu.");
+            return null;
+        }
+
+        List<Ingredient> matches = ingredientService.findByBarcode(normalizedBarcode);
+        if (matches.isEmpty()) {
+            showError("Nu există articol mapat pentru codul de bare: " + normalizedBarcode);
+            return null;
+        }
+
+        if (matches.size() == 1) {
+            return matches.get(0);
+        }
+
+        Map<String, Ingredient> optionsByLabel = new HashMap<>();
+        List<String> labels = new ArrayList<>();
+        for (Ingredient match : matches) {
+            String label = String.format(
+                "%s [ID:%d | Depozit:%s | Zonă:%s]",
+                match.getName(),
+                match.getId(),
+                match.getWarehouse() != null ? match.getWarehouse() : "N/A",
+                match.getZone() != null ? match.getZone() : "N/A"
+            );
+            optionsByLabel.put(label, match);
+            labels.add(label);
+        }
+
+        String selected = promptChoice(
+            "Selecție articol",
+            "Codul de bare este asociat cu mai multe articole. Alegeți articolul:",
+            labels
+        );
+        return selected != null ? optionsByLabel.get(selected) : null;
+    }
+
+    private LocalDate parseOptionalDate(String value) {
+        String normalized = normalizeOptionalField(value);
+        if (normalized == null) {
+            return null;
+        }
+
+        try {
+            return LocalDate.parse(normalized);
+        } catch (DateTimeParseException ex) {
+            throw new IllegalArgumentException("Data expirării trebuie să fie în formatul YYYY-MM-DD.");
+        }
+    }
+
     private String trimForReport(String text, int maxLength) {
         if (text == null) {
             return "";
@@ -984,5 +1279,25 @@ public class InventoryController {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.show();
+    }
+
+    private boolean requireManagerOrAdmin(String action, String resource) {
+        try {
+            authorizationService.requireAnyRole(action, resource, User.Role.ADMIN, User.Role.MANAGER);
+            return true;
+        } catch (AuthorizationException ex) {
+            showError(ex.getMessage());
+            return false;
+        }
+    }
+
+    private boolean requireOperatorOrAbove(String action, String resource) {
+        try {
+            authorizationService.requireOperatorOrAbove(action, resource);
+            return true;
+        } catch (AuthorizationException ex) {
+            showError(ex.getMessage());
+            return false;
+        }
     }
 }

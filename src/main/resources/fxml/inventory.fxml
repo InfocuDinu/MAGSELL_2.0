@@ -74,9 +74,12 @@
                     <Button text="📋 Inventariere Asistată" onAction="#runAssistedInventory" styleClass="button info"/>
                     <Button text="🧠 Reaprovizionare Inteligentă" onAction="#runSmartReplenishment" styleClass="button primary"/>
                     <Button text="📤 Export CSV Comandă Azi" onAction="#exportSmartReplenishmentCsv" styleClass="button"/>
+                    <Button text="🏬 Raport Multi-location" onAction="#showMultiLocationReport" styleClass="button warning"/>
                 </HBox>
 
                 <HBox spacing="15" alignment="CENTER_RIGHT">
+                    <Button text="📷 Recepție Scan" onAction="#barcodeReception" styleClass="button success"/>
+                    <Button text="📷 Consum Scan" onAction="#barcodeConsumption" styleClass="button warning"/>
                     <Button text="↔ Transfer Intern" onAction="#transferInternal" styleClass="button primary"/>
                     <Button text="⚖ Ajustare" onAction="#adjustStock" styleClass="button"/>
                     <Button text="↩ Retur Furnizor" onAction="#returnToSupplier" styleClass="button info"/>

@@ -2,10 +2,12 @@ package com.bakerymanager.service;
 
 import com.bakerymanager.entity.*;
 import com.bakerymanager.repository.*;
+import com.bakerymanager.smartbill.production.api.dto.SchedulerAlertDto;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -22,17 +24,23 @@ public class SchedulingService {
     private final ProductionCapacityRepository capacityRepository;
     private final ProductionScheduleEntryRepository scheduleEntryRepository;
     private final ProductionOrderLineRepository orderLineRepository;
+    private final ProductionOrderRepository productionOrderRepository;
+    private final ProductionReportRepository productionReportRepository;
     private final ProductService productService;
     
     public SchedulingService(ProductionShiftRepository shiftRepository,
                             ProductionCapacityRepository capacityRepository,
                             ProductionScheduleEntryRepository scheduleEntryRepository,
                             ProductionOrderLineRepository orderLineRepository,
+                            ProductionOrderRepository productionOrderRepository,
+                            ProductionReportRepository productionReportRepository,
                             ProductService productService) {
         this.shiftRepository = shiftRepository;
         this.capacityRepository = capacityRepository;
         this.scheduleEntryRepository = scheduleEntryRepository;
         this.orderLineRepository = orderLineRepository;
+        this.productionOrderRepository = productionOrderRepository;
+        this.productionReportRepository = productionReportRepository;
         this.productService = productService;
     }
     
@@ -70,7 +78,16 @@ public class SchedulingService {
     public List<ProductionShift> findAvailableShifts(LocalDateTime start,
                                                     LocalDateTime end,
                                                     ProductionShift.ResourceType resourceType) {
+        if (resourceType == null) {
+            return shiftRepository.findAvailableShifts(start, end);
+        }
         return shiftRepository.findShiftsWithAvailableCapacity(resourceType, start, end);
+    }
+
+    public List<ProductionScheduleEntry> getScheduleEntries(LocalDate startDate, LocalDate endDate) {
+        LocalDateTime start = startDate.atStartOfDay();
+        LocalDateTime end = endDate.atTime(23, 59, 59);
+        return scheduleEntryRepository.findEntriesByDateRange(start, end);
     }
     
     /**
@@ -280,8 +297,266 @@ public class SchedulingService {
         overview.put("totalCapacityUtilization", calculateTotalUtilization(shifts));
         overview.put("entriesByStatus", groupEntriesByStatus(entries));
         overview.put("capacityByResourceType", groupCapacityByResourceType(startDate, endDate));
+        overview.put("alertCount", getSchedulerAlerts(startDate, endDate).size());
         
         return overview;
+    }
+
+    /**
+     * Auto-scheduling engine for unscheduled production order lines.
+     */
+    public List<ProductionScheduleEntry> autoScheduleOrders(LocalDate startDate, LocalDate endDate) {
+        LocalDate start = startDate != null ? startDate : LocalDate.now();
+        LocalDate end = endDate != null ? endDate : start.plusDays(7);
+
+        List<ProductionOrder> orders = productionOrderRepository.findByPlannedDateBetweenOrderByPlannedDate(start, end);
+        List<ProductionScheduleEntry> createdEntries = new ArrayList<>();
+
+        for (ProductionOrder order : orders) {
+            if (order.getStatus() == ProductionOrder.Status.CANCELLED || order.getStatus() == ProductionOrder.Status.COMPLETED) {
+                continue;
+            }
+
+            ProductionOrder fullOrder = productionOrderRepository.findByIdWithLines(order.getId()).orElse(order);
+            for (ProductionOrderLine line : fullOrder.getLines()) {
+                if (line == null || line.getId() == null || line.getProduct() == null) {
+                    continue;
+                }
+                if (scheduleEntryRepository.isOrderLineScheduled(line.getId())) {
+                    continue;
+                }
+
+                BigDecimal pendingQty = pendingQuantity(line);
+                if (pendingQty.compareTo(BigDecimal.ZERO) <= 0) {
+                    continue;
+                }
+
+                Optional<ProductionShift> bestShift = findBestShiftForLine(line, pendingQty, start, end);
+                if (bestShift.isEmpty()) {
+                    continue;
+                }
+
+                int priority = computePriority(line, fullOrder);
+                ProductionScheduleEntry created = scheduleOrderToShift(line.getId(), bestShift.get().getId(), pendingQty, priority);
+                createdEntries.add(created);
+            }
+        }
+
+        return createdEntries;
+    }
+
+    /**
+     * Resource leveling - redistribute low-priority work from overloaded shifts to underloaded shifts.
+     */
+    public int levelResources(LocalDate startDate, LocalDate endDate) {
+        LocalDateTime start = startDate.atStartOfDay();
+        LocalDateTime end = endDate.atTime(23, 59, 59);
+
+        List<ProductionShift> shifts = shiftRepository.findByDateRange(start, end);
+        List<ProductionShift> overloaded = shifts.stream()
+            .filter(s -> utilization(s) >= 90.0)
+            .sorted(Comparator.comparingDouble(this::utilization).reversed())
+            .toList();
+
+        int moved = 0;
+        for (ProductionShift source : overloaded) {
+            List<ProductionScheduleEntry> candidates = scheduleEntryRepository.findActiveEntriesByShiftId(source.getId()).stream()
+                .sorted(Comparator.comparing(ProductionScheduleEntry::getPriority))
+                .toList();
+
+            for (ProductionScheduleEntry entry : candidates) {
+                Optional<ProductionShift> targetOpt = shifts.stream()
+                    .filter(s -> !Objects.equals(s.getId(), source.getId()))
+                    .filter(s -> s.getResourceType() == source.getResourceType())
+                    .filter(s -> s.getStatus() == ProductionShift.ShiftStatus.AVAILABLE)
+                    .filter(s -> s.canAllocate(entry.getAllocatedQuantity()))
+                    .filter(s -> utilization(s) < 80.0)
+                    .sorted(Comparator
+                        .comparingDouble(this::utilization)
+                        .thenComparing(ProductionShift::getShiftStart))
+                    .findFirst();
+
+                if (targetOpt.isPresent()) {
+                    rescheduleEntry(entry.getId(), targetOpt.get().getId(), entry.getAllocatedQuantity());
+                    moved++;
+                    if (utilization(source) < 85.0) {
+                        break;
+                    }
+                }
+            }
+        }
+
+        return moved;
+    }
+
+    public List<SchedulerAlertDto> getSchedulerAlerts(LocalDate startDate, LocalDate endDate) {
+        LocalDate start = startDate != null ? startDate : LocalDate.now();
+        LocalDate end = endDate != null ? endDate : start.plusDays(7);
+        LocalDateTime startTs = start.atStartOfDay();
+        LocalDateTime endTs = end.atTime(23, 59, 59);
+
+        List<SchedulerAlertDto> alerts = new ArrayList<>();
+
+        // Capacity / over-capacity alerts
+        for (ProductionShift shift : shiftRepository.findByDateRange(startTs, endTs)) {
+            double u = utilization(shift);
+            if (u >= 100.0) {
+                alerts.add(new SchedulerAlertDto("CRITICAL", "OVER_CAPACITY",
+                    "Schimb supraîncărcat (" + shift.getShiftName() + "): " + String.format(Locale.ROOT, "%.1f%%", u),
+                    shift.getResourceId(), shift.getShiftStart()));
+            } else if (u >= 90.0) {
+                alerts.add(new SchedulerAlertDto("WARN", "HIGH_UTILIZATION",
+                    "Schimb aproape de limită (" + shift.getShiftName() + "): " + String.format(Locale.ROOT, "%.1f%%", u),
+                    shift.getResourceId(), shift.getShiftStart()));
+            }
+
+            if (shift.getStatus() == ProductionShift.ShiftStatus.BLOCKED) {
+                alerts.add(new SchedulerAlertDto("WARN", "RESOURCE_BLOCKED",
+                    "Resursă indisponibilă: " + shift.getShiftName(), shift.getResourceId(), shift.getShiftStart()));
+            }
+        }
+
+        // Deadline alerts - unscheduled lines near/over due date
+        LocalDate tomorrow = LocalDate.now().plusDays(1);
+        for (ProductionOrder order : productionOrderRepository.findByPlannedDateBetweenOrderByPlannedDate(start, end)) {
+            if (order.getStatus() == ProductionOrder.Status.CANCELLED || order.getStatus() == ProductionOrder.Status.COMPLETED) {
+                continue;
+            }
+            ProductionOrder fullOrder = productionOrderRepository.findByIdWithLines(order.getId()).orElse(order);
+            for (ProductionOrderLine line : fullOrder.getLines()) {
+                if (line == null || line.getId() == null || line.getProduct() == null) {
+                    continue;
+                }
+                if (scheduleEntryRepository.isOrderLineScheduled(line.getId())) {
+                    continue;
+                }
+                if (order.getPlannedDate() != null && !order.getPlannedDate().isAfter(tomorrow)) {
+                    String severity = order.getPlannedDate().isBefore(LocalDate.now()) ? "CRITICAL" : "WARN";
+                    alerts.add(new SchedulerAlertDto(
+                        severity,
+                        "DEADLINE_RISK",
+                        "Linie neplanificată aproape de termen: " + line.getProduct().getName() +
+                            " (comandă " + order.getOrderNumber() + ")",
+                        order.getOrderNumber(),
+                        order.getPlannedDate().atStartOfDay()
+                    ));
+                }
+            }
+        }
+
+        return alerts.stream()
+            .sorted(Comparator.comparing(SchedulerAlertDto::severity).thenComparing(SchedulerAlertDto::at))
+            .toList();
+    }
+
+    public Map<String, Object> reconcileExecution(LocalDate startDate, LocalDate endDate) {
+        LocalDate start = startDate != null ? startDate : LocalDate.now().minusDays(7);
+        LocalDate end = endDate != null ? endDate : LocalDate.now();
+        LocalDateTime startTs = start.atStartOfDay();
+        LocalDateTime endTs = end.atTime(23, 59, 59);
+
+        List<ProductionScheduleEntry> entries = scheduleEntryRepository.findEntriesByDateRange(startTs, endTs);
+        List<ProductionReport> reports = productionReportRepository.findByProductionDateBetween(startTs, endTs);
+
+        Map<Long, BigDecimal> plannedByProduct = new HashMap<>();
+        for (ProductionScheduleEntry e : entries) {
+            if (e.getProductionOrderLine() != null && e.getProductionOrderLine().getProduct() != null && e.getAllocatedQuantity() != null) {
+                Long productId = e.getProductionOrderLine().getProduct().getId();
+                plannedByProduct.merge(productId, e.getAllocatedQuantity(), BigDecimal::add);
+            }
+        }
+
+        Map<Long, BigDecimal> actualByProduct = new HashMap<>();
+        for (ProductionReport r : reports) {
+            if (r.getProduct() != null && r.getQuantityProduced() != null) {
+                actualByProduct.merge(r.getProduct().getId(), r.getQuantityProduced(), BigDecimal::add);
+            }
+        }
+
+        List<Map<String, Object>> variance = new ArrayList<>();
+        Set<Long> productIds = new HashSet<>();
+        productIds.addAll(plannedByProduct.keySet());
+        productIds.addAll(actualByProduct.keySet());
+
+        for (Long productId : productIds) {
+            Product p = productService.getProductById(productId).orElse(null);
+            BigDecimal planned = plannedByProduct.getOrDefault(productId, BigDecimal.ZERO);
+            BigDecimal actual = actualByProduct.getOrDefault(productId, BigDecimal.ZERO);
+            BigDecimal diff = actual.subtract(planned);
+            BigDecimal pct = planned.compareTo(BigDecimal.ZERO) > 0
+                ? diff.divide(planned, 4, RoundingMode.HALF_UP).multiply(new BigDecimal("100"))
+                : BigDecimal.ZERO;
+
+            Map<String, Object> row = new HashMap<>();
+            row.put("product", p != null ? p.getName() : "P#" + productId);
+            row.put("planned", planned);
+            row.put("actual", actual);
+            row.put("variance", diff);
+            row.put("variancePercent", pct);
+            variance.add(row);
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("window", start + " -> " + end);
+        result.put("plannedTotal", plannedByProduct.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add));
+        result.put("actualTotal", actualByProduct.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add));
+        result.put("varianceByProduct", variance);
+        return result;
+    }
+
+    public Map<String, Object> getAdvancedSchedulingReport(LocalDate startDate, LocalDate endDate) {
+        LocalDate start = startDate != null ? startDate : LocalDate.now();
+        LocalDate end = endDate != null ? endDate : start.plusDays(7);
+        LocalDateTime startTs = start.atStartOfDay();
+        LocalDateTime endTs = end.atTime(23, 59, 59);
+
+        List<ProductionShift> shifts = shiftRepository.findByDateRange(startTs, endTs);
+        List<ProductionScheduleEntry> entries = scheduleEntryRepository.findEntriesByDateRange(startTs, endTs);
+
+        List<Map<String, Object>> gantt = entries.stream().map(e -> {
+            Map<String, Object> row = new HashMap<>();
+            ProductionShift s = e.getProductionShift();
+            row.put("shift", s.getShiftName());
+            row.put("resource", s.getResourceId());
+            row.put("resourceType", s.getResourceType().name());
+            row.put("start", s.getShiftStart());
+            row.put("end", s.getShiftEnd());
+            row.put("status", e.getStatus().name());
+            row.put("priority", e.getPriority());
+            row.put("product", e.getProductionOrderLine() != null && e.getProductionOrderLine().getProduct() != null
+                ? e.getProductionOrderLine().getProduct().getName() : "N/A");
+            row.put("qty", e.getAllocatedQuantity());
+            return row;
+        }).toList();
+
+        Map<String, Double> heatmap = shifts.stream().collect(Collectors.toMap(
+            s -> s.getResourceType().name() + "::" + s.getResourceId() + "::" + s.getShiftStart().toLocalDate(),
+            this::utilization,
+            (a, b) -> Math.max(a, b)
+        ));
+
+        List<Map<String, Object>> bottlenecks = shifts.stream()
+            .filter(s -> utilization(s) >= 90.0)
+            .sorted(Comparator.comparingDouble(this::utilization).reversed())
+            .map(s -> {
+                Map<String, Object> row = new HashMap<>();
+                row.put("shift", s.getShiftName());
+                row.put("resource", s.getResourceId());
+                row.put("utilization", utilization(s));
+                row.put("available", s.getAvailableCapacity());
+                return row;
+            })
+            .toList();
+
+        Map<String, Object> report = new HashMap<>();
+        report.put("window", start + " -> " + end);
+        report.put("gantt", gantt);
+        report.put("heatmap", heatmap);
+        report.put("bottlenecks", bottlenecks);
+        report.put("alerts", getSchedulerAlerts(start, end));
+        report.put("overview", getSchedulingOverview(start, end));
+        report.put("execution", reconcileExecution(start, end));
+        return report;
     }
     
     /**
@@ -385,6 +660,79 @@ public class SchedulingService {
         }
         
         return (totalAllocated.doubleValue() / totalCapacity.doubleValue()) * 100.0;
+    }
+
+    private double utilization(ProductionShift shift) {
+        if (shift == null || shift.getCapacityUnits() == null || shift.getCapacityUnits().compareTo(BigDecimal.ZERO) <= 0) {
+            return 0.0;
+        }
+        BigDecimal allocated = shift.getAllocatedUnits() != null ? shift.getAllocatedUnits() : BigDecimal.ZERO;
+        return allocated.divide(shift.getCapacityUnits(), 6, RoundingMode.HALF_UP)
+            .multiply(new BigDecimal("100"))
+            .doubleValue();
+    }
+
+    private BigDecimal pendingQuantity(ProductionOrderLine line) {
+        BigDecimal planned = line.getPlannedQuantity() != null ? line.getPlannedQuantity() : BigDecimal.ZERO;
+        BigDecimal actual = line.getActualQuantity() != null ? line.getActualQuantity() : BigDecimal.ZERO;
+        BigDecimal pending = planned.subtract(actual);
+        if (pending.compareTo(BigDecimal.ZERO) <= 0) {
+            return planned;
+        }
+        return pending;
+    }
+
+    private Optional<ProductionShift> findBestShiftForLine(ProductionOrderLine line,
+                                                           BigDecimal quantity,
+                                                           LocalDate start,
+                                                           LocalDate end) {
+        ProductionShift.ResourceType preferredType = inferResourceType(line);
+        List<ProductionShift> candidates = findAvailableShifts(start.atStartOfDay(), end.atTime(23, 59, 59), preferredType);
+        if (candidates.isEmpty()) {
+            candidates = findAvailableShifts(start.atStartOfDay(), end.atTime(23, 59, 59), null);
+        }
+
+        return candidates.stream()
+            .filter(s -> s.canAllocate(quantity))
+            .sorted(Comparator
+                .comparingDouble(this::utilization)
+                .thenComparing(ProductionShift::getShiftStart))
+            .findFirst();
+    }
+
+    private int computePriority(ProductionOrderLine line, ProductionOrder order) {
+        int base = 5;
+        if (order != null && order.getPlannedDate() != null) {
+            long days = java.time.temporal.ChronoUnit.DAYS.between(LocalDate.now(), order.getPlannedDate());
+            if (days <= 0) {
+                base = 10;
+            } else if (days == 1) {
+                base = 9;
+            } else if (days <= 3) {
+                base = 7;
+            }
+        }
+        BigDecimal qty = line != null && line.getPlannedQuantity() != null ? line.getPlannedQuantity() : BigDecimal.ZERO;
+        if (qty.compareTo(new BigDecimal("500")) > 0) {
+            base = Math.min(10, base + 1);
+        }
+        return base;
+    }
+
+    private ProductionShift.ResourceType inferResourceType(ProductionOrderLine line) {
+        Product p = line != null ? line.getProduct() : null;
+        if (p == null) {
+            return ProductionShift.ResourceType.LINE;
+        }
+        int baking = p.getBakingTimeMinutes() != null ? p.getBakingTimeMinutes() : 0;
+        int prep = p.getPrepTimeMinutes() != null ? p.getPrepTimeMinutes() : 0;
+        if (baking > prep && baking > 0) {
+            return ProductionShift.ResourceType.OVEN;
+        }
+        if (prep > 0) {
+            return ProductionShift.ResourceType.LINE;
+        }
+        return ProductionShift.ResourceType.LINE;
     }
     
     /**

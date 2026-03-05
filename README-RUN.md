@@ -50,6 +50,40 @@ mvnw.cmd javafx:run
 Aplicația folosește **SQLite** cu fișierul `bakery.db` în directorul rădăcină.
 Toate entitățile sunt create automat la prima rulare.
 
+### Migrare H2 → SQLite (operațional)
+
+Pentru proiecte/instanțe legacy care încă au date în H2:
+
+- Script migrare: `scripts/db/migrate-h2-to-sqlite.ps1`
+- Script validare: `scripts/db/validate-h2-sqlite.ps1`
+- Ghid complet: `docs/DB_MIGRATION_H2_TO_SQLITE.md`
+
+Exemplu rapid:
+
+```powershell
+./scripts/db/migrate-h2-to-sqlite.ps1 -H2Url "jdbc:h2:file:C:/data/bakery-h2" -SQLitePath "C:/data/bakery.db" -Replace $true -Backup $true -ValidateAfter $true
+```
+
+### Backup & Recovery automat
+
+- Ghid complet: `docs/BACKUP_RECOVERY_AUTOMAT.md`
+- Restore rapid din script: `scripts/db/restore-sqlite-backup.ps1`
+
+### Audit Trail complet
+
+- Ghid: `docs/AUDIT_TRAIL_COMPLET.md`
+- Tabel principal audit: `access_audit_log`
+
+### Security hardening
+
+- Ghid: `docs/SECURITY_HARDENING.md`
+- Policy strictă recomandată în producție: `APP_SECURITY_REQUIRE_ENV_SECRETS=true`
+
+### Performance tuning
+
+- Ghid: `docs/PERFORMANCE_TUNING.md`
+- Include: cache selectiv (Caffeine), query-uri optimizate pentru index, monitorizare latență/throughput pe servicii
+
 ## 🐛 Depanare
 
 ### Dacă aplicația nu pornește:

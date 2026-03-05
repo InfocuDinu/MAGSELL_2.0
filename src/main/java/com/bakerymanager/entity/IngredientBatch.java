@@ -7,7 +7,11 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "ingredient_batches")
+@Table(name = "ingredient_batches", indexes = {
+    @Index(name = "idx_ing_batches_ingredient", columnList = "ingredient_id"),
+    @Index(name = "idx_ing_batches_fefo", columnList = "ingredient_id,expiry_date,received_date"),
+    @Index(name = "idx_ing_batches_batch_code", columnList = "batch_code")
+})
 public class IngredientBatch {
 
     @Id

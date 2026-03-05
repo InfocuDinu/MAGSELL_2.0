@@ -4,6 +4,8 @@ import com.bakerymanager.entity.User;
 import com.bakerymanager.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,8 +18,10 @@ import java.util.Optional;
 public class UserService {
     
     private static final Logger logger = LoggerFactory.getLogger(UserService.class);
+    private static final String LEGACY_PREFIX = "HASH_";
     
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     private User currentUser;  // Track currently logged-in user
     
     public UserService(UserRepository userRepository) {
@@ -33,8 +37,8 @@ public class UserService {
         
         if (userOpt.isPresent()) {
             User user = userOpt.get();
-            // Simple password check (will be replaced with BCrypt)
             if (checkPassword(password, user.getPasswordHash())) {
+                migrateLegacyHashIfNeeded(user, password);
                 user.setLastLogin(LocalDateTime.now());
                 userRepository.save(user);
                 this.currentUser = user;
@@ -54,6 +58,7 @@ public class UserService {
         if (userRepository.existsByUsername(username)) {
             throw new IllegalArgumentException("Username already exists: " + username);
         }
+        validatePasswordStrength(password);
         
         User user = new User();
         user.setUsername(username);
@@ -73,6 +78,7 @@ public class UserService {
     public void updatePassword(Long userId, String newPassword) {
         User user = userRepository.findById(userId)
             .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        validatePasswordStrength(newPassword);
         
         user.setPasswordHash(hashPassword(newPassword));
         userRepository.save(user);
@@ -109,6 +115,19 @@ public class UserService {
     public boolean isAdmin() {
         return hasRole(User.Role.ADMIN);
     }
+
+    public boolean isManagerOrAdmin() {
+        return hasRole(User.Role.ADMIN) || hasRole(User.Role.MANAGER);
+    }
+
+    public boolean isOperatorOrAbove() {
+        if (currentUser == null || currentUser.getRole() == null) {
+            return false;
+        }
+        return switch (currentUser.getRole()) {
+            case ADMIN, MANAGER, OPERATOR, CASHIER, PRODUCTION -> true;
+        };
+    }
     
     /**
      * Get all users
@@ -136,21 +155,55 @@ public class UserService {
         logger.info("User deactivated: {}", user.getUsername());
     }
     
-    /**
-     * Simple password hashing (placeholder for BCrypt)
-     * In production, use BCryptPasswordEncoder from Spring Security
-     */
     private String hashPassword(String password) {
-        // For now, simple hash (will be replaced with BCrypt)
-        // Using a simple hash for demonstration - NOT SECURE for production
-        return "HASH_" + password.hashCode();
+        return passwordEncoder.encode(password);
     }
     
     /**
      * Check password against hash
      */
     private boolean checkPassword(String password, String hash) {
-        return hashPassword(password).equals(hash);
+        if (password == null || hash == null || hash.isBlank()) {
+            return false;
+        }
+
+        if (isLegacyHash(hash)) {
+            return legacyHash(password).equals(hash);
+        }
+
+        try {
+            return passwordEncoder.matches(password, hash);
+        } catch (Exception ex) {
+            logger.warn("Password hash format invalid for provided user hash.");
+            return false;
+        }
+    }
+
+    private void migrateLegacyHashIfNeeded(User user, String rawPassword) {
+        if (user == null || user.getPasswordHash() == null || !isLegacyHash(user.getPasswordHash())) {
+            return;
+        }
+        user.setPasswordHash(hashPassword(rawPassword));
+        logger.info("Migrated legacy password hash to BCrypt for user: {}", user.getUsername());
+    }
+
+    private boolean isLegacyHash(String hash) {
+        return hash != null && hash.startsWith(LEGACY_PREFIX);
+    }
+
+    private String legacyHash(String password) {
+        return LEGACY_PREFIX + password.hashCode();
+    }
+
+    private void validatePasswordStrength(String password) {
+        if (password == null || password.length() < 8) {
+            throw new IllegalArgumentException("Parola trebuie să aibă minim 8 caractere.");
+        }
+        boolean hasLetter = password.chars().anyMatch(Character::isLetter);
+        boolean hasDigit = password.chars().anyMatch(Character::isDigit);
+        if (!hasLetter || !hasDigit) {
+            throw new IllegalArgumentException("Parola trebuie să conțină litere și cifre.");
+        }
     }
     
     /**
@@ -160,7 +213,8 @@ public class UserService {
     public void initializeDefaultUsers() {
         if (userRepository.count() == 0) {
             createUser("admin", "admin123", "Administrator", User.Role.ADMIN);
-            createUser("casier", "casier123", "Casier Principal", User.Role.CASHIER);
+            createUser("manager", "manager123", "Manager Operațional", User.Role.MANAGER);
+            createUser("operator", "operator123", "Operator Flux", User.Role.OPERATOR);
             logger.info("Default users created");
         }
     }

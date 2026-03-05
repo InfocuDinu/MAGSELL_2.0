@@ -28,8 +28,16 @@ public interface ProductionShiftRepository extends JpaRepository<ProductionShift
             @Param("end") LocalDateTime end
     );
     
-    @Query("SELECT s FROM ProductionShift s WHERE s.capacityDate = :date ORDER BY s.shiftStart ASC")
-    List<ProductionShift> findByDate(@Param("date") LocalDate date);
+        List<ProductionShift> findByShiftStartGreaterThanEqualAndShiftStartLessThanOrderByShiftStartAsc(
+                        LocalDateTime startInclusive,
+                        LocalDateTime endExclusive
+        );
+
+        default List<ProductionShift> findByDate(LocalDate date) {
+                LocalDateTime start = date.atStartOfDay();
+                LocalDateTime end = date.plusDays(1).atStartOfDay();
+                return findByShiftStartGreaterThanEqualAndShiftStartLessThanOrderByShiftStartAsc(start, end);
+        }
     
     @Query("SELECT s FROM ProductionShift s WHERE s.shiftStart >= :start AND s.shiftEnd <= :end " +
            "AND s.status != 'BLOCKED' ORDER BY s.shiftStart ASC")

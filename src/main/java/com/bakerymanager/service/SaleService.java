@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.ArrayList;
@@ -144,11 +145,17 @@ public class SaleService {
     }
     
     public List<Sale> getTodaySales() {
-        return saleRepository.findTodaySales();
+        LocalDate today = LocalDate.now();
+        LocalDateTime start = today.atStartOfDay();
+        LocalDateTime end = today.plusDays(1).atStartOfDay();
+        return saleRepository.findSalesBetweenOrdered(start, end);
     }
     
     public BigDecimal getTodayTotalSales() {
-        return saleRepository.getTodayTotalSales();
+        LocalDate today = LocalDate.now();
+        LocalDateTime start = today.atStartOfDay();
+        LocalDateTime end = today.plusDays(1).atStartOfDay();
+        return saleRepository.getTotalSalesBetween(start, end);
     }
     
     public BigDecimal getTotalSalesByDateRange(LocalDateTime startDate, LocalDateTime endDate) {

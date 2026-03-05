@@ -6,7 +6,12 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "stock_movements")
+@Table(name = "stock_movements", indexes = {
+    @Index(name = "idx_stock_movements_movement_date", columnList = "movement_date"),
+    @Index(name = "idx_stock_movements_ingredient", columnList = "ingredient_id"),
+    @Index(name = "idx_stock_movements_type", columnList = "movement_type"),
+    @Index(name = "idx_stock_movements_ingredient_type_date", columnList = "ingredient_id,movement_type,movement_date")
+})
 public class StockMovement {
 
     public enum MovementType {

@@ -34,11 +34,13 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
     Long getSalesCountByDateRange(@Param("startDate") LocalDateTime startDate, 
                                    @Param("endDate") LocalDateTime endDate);
     
-    @Query("SELECT s FROM Sale s WHERE DATE(s.saleDate) = DATE('now') ORDER BY s.saleDate DESC")
-    List<Sale> findTodaySales();
-    
-    @Query("SELECT SUM(s.totalAmount) FROM Sale s WHERE DATE(s.saleDate) = DATE('now')")
-    BigDecimal getTodayTotalSales();
+    @Query("SELECT s FROM Sale s WHERE s.saleDate >= :startDate AND s.saleDate < :endDate ORDER BY s.saleDate DESC")
+    List<Sale> findSalesBetweenOrdered(@Param("startDate") LocalDateTime startDate,
+                                       @Param("endDate") LocalDateTime endDate);
+
+    @Query("SELECT COALESCE(SUM(s.totalAmount), 0) FROM Sale s WHERE s.saleDate >= :startDate AND s.saleDate < :endDate")
+    BigDecimal getTotalSalesBetween(@Param("startDate") LocalDateTime startDate,
+                                    @Param("endDate") LocalDateTime endDate);
     
     List<Sale> findTop10ByOrderBySaleDateDesc();
 }

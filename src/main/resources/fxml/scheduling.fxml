@@ -16,7 +16,7 @@
         <HBox spacing="20" style="-fx-padding: 10; -fx-border-color: #cccccc; -fx-border-width: 0 0 1 0;">
             <Label text="Planificator Producție - Schimburi și Capacități" style="-fx-font-size: 16; -fx-font-weight: bold;"/>
             <Region HBox.hgrow="ALWAYS"/>
-            <Label fx:id="utilizationLabel" text="Utilizare: 0%"/>
+            <Label fx:id="headerUtilizationLabel" text="Utilizare: 0%"/>
         </HBox>
         
         <!-- Split Pane -->
@@ -69,7 +69,7 @@
                         </HBox>
                         
                         <!-- Create Button -->
-                        <Button text="Creare Schimb" style="-fx-font-size: 11; -fx-padding: 5 20;"/>
+                        <Button text="Creare Schimb" style="-fx-font-size: 11; -fx-padding: 5 20;" onAction="#createShift"/>
                     </VBox>
                 </TitledPane>
                 
@@ -95,10 +95,15 @@
                 <!-- Date Range -->
                 <HBox spacing="10" alignment="CENTER_LEFT">
                     <Label text="De la:"/>
-                    <DatePicker style="-fx-pref-width: 120;"/>
+                    <DatePicker fx:id="scheduleStartDatePicker" style="-fx-pref-width: 120;"/>
                     <Label text="Până la:"/>
-                    <DatePicker style="-fx-pref-width: 120;"/>
-                    <Button text="Reîncărcare"/>
+                    <DatePicker fx:id="scheduleEndDatePicker" style="-fx-pref-width: 120;"/>
+                    <Button text="Reîncărcare" onAction="#refreshScheduler"/>
+                    <Button text="Auto-Scheduling" onAction="#autoSchedule"/>
+                    <Button text="Leveling" onAction="#levelResources"/>
+                    <Button text="Alerte" onAction="#showAlerts"/>
+                    <Button text="Plan vs Exec" onAction="#syncExecution"/>
+                    <Button text="Raport Avansat" onAction="#showAdvancedReport"/>
                     <Region HBox.hgrow="ALWAYS"/>
                 </HBox>
                 
@@ -119,6 +124,9 @@
                         <TableColumn text="Prioritate" prefWidth="70"/>
                     </columns>
                 </TableView>
+
+                <Label text="Insights / Alerts / Raport" style="-fx-font-weight: bold;"/>
+                <TextArea fx:id="schedulerInsightsArea" prefRowCount="8" wrapText="true"/>
             </VBox>
         </SplitPane>
     </VBox>

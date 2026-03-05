@@ -35,6 +35,8 @@ public class FinancialReportingService {
     private final ProductionReportRepository productionReportRepository;
     private final SaleItemRepository saleItemRepository;
     private final RecipeItemRepository recipeItemRepository;
+    private final IngredientBatchRepository ingredientBatchRepository;
+    private final UnitConversionService unitConversionService;
     
     /**
      * Calculate production cost for a product.
@@ -53,10 +55,17 @@ public class FinancialReportingService {
         CostBreakdown costBreakdown = new CostBreakdown();
         costBreakdown.setProduct(product);
         costBreakdown.setCostDate(costDate);
-        costBreakdown.setCostMethod("AVERAGE");
+        costBreakdown.setCostMethod("FEFO");
         
-        // Get production reports for this product (all time - will be filtered by date in future)
-        List<ProductionReport> productions = productionReportRepository.findByProductOrderByProductionDateDesc(product);
+        LocalDateTime startOfDay = costDate.atStartOfDay();
+        LocalDateTime endOfDay = costDate.plusDays(1).atStartOfDay();
+
+        // Prefer production for selected date; fallback to all-time if no rows for date
+        List<ProductionReport> productions = productionReportRepository
+            .findByProductAndProductionDateBetweenOrderByProductionDateDesc(product, startOfDay, endOfDay);
+        if (productions.isEmpty()) {
+            productions = productionReportRepository.findByProductOrderByProductionDateDesc(product);
+        }
         
         if (productions.isEmpty()) {
             log.debug("No production found for {}", product.getName());
@@ -69,28 +78,16 @@ public class FinancialReportingService {
             return costBreakdownRepository.save(costBreakdown);
         }
         
-        // Calculate approximate cost based on recipe
+        // Calculate FEFO-based costs
         BigDecimal totalQuantity = BigDecimal.ZERO;
-        BigDecimal totalRawMaterialCost = BigDecimal.ZERO;
         
         for (ProductionReport production : productions) {
-            totalQuantity = totalQuantity.add(production.getQuantityProduced());
-        }
-        
-        // Get recipe items and calculate approx cost
-        List<RecipeItem> recipeItems = recipeItemRepository.findByProduct(product);
-        if (recipeItems != null && !recipeItems.isEmpty()) {
-            // For each recipe item, estimate cost based on ingredient average price
-            for (RecipeItem item : recipeItems) {
-                if (item.getIngredient() != null) {
-                    // Use fixed estimate for now - will get actual batch prices when repository methods available
-                    BigDecimal estimatedIngredientCost = new BigDecimal("10");  // Placeholder
-                    totalRawMaterialCost = totalRawMaterialCost.add(
-                        estimatedIngredientCost.multiply(item.getRequiredQuantity() != null ? item.getRequiredQuantity() : BigDecimal.ONE)
-                    );
-                }
+            if (production.getQuantityProduced() != null) {
+                totalQuantity = totalQuantity.add(production.getQuantityProduced());
             }
         }
+
+        BigDecimal totalRawMaterialCost = calculateRawMaterialCostFefo(product, totalQuantity, endOfDay);
         
         BigDecimal overheadPerUnit = new BigDecimal("0.50");  // Placeholder
         BigDecimal totalOverhead = overheadPerUnit.multiply(totalQuantity);
@@ -100,11 +97,108 @@ public class FinancialReportingService {
         costBreakdown.setLaborCost(BigDecimal.ZERO);  // Will be enhanced when scheduling methods available
         costBreakdown.setOverheadCost(totalOverhead);
         costBreakdown.setSemifabricatCost(BigDecimal.ZERO);  // Will be enhanced for multi-level recipes
+        costBreakdown.setNotes("Cost calculat FEFO pe loturi disponibile până la data raportului.");
         costBreakdown.recalculateTotal();
         
         log.info("Cost calculated - Total: {}, Unit cost: {}", costBreakdown.getTotalCost(), costBreakdown.getUnitCost());
         
         return costBreakdownRepository.save(costBreakdown);
+    }
+
+    private BigDecimal calculateRawMaterialCostFefo(Product product,
+                                                    BigDecimal totalQuantityProduced,
+                                                    LocalDateTime asOfDateTime) {
+        if (product == null || totalQuantityProduced == null || totalQuantityProduced.compareTo(BigDecimal.ZERO) <= 0) {
+            return BigDecimal.ZERO;
+        }
+
+        List<RecipeItem> recipeItems = recipeItemRepository.findByProductWithIngredient(product);
+        if (recipeItems == null || recipeItems.isEmpty()) {
+            return BigDecimal.ZERO;
+        }
+
+        BigDecimal totalRawMaterialCost = BigDecimal.ZERO;
+        for (RecipeItem item : recipeItems) {
+            if (item == null || item.getIngredient() == null) {
+                continue;
+            }
+            if (item.getComponentType() != null && item.getComponentType() != RecipeItem.ComponentType.INGREDIENT) {
+                continue;
+            }
+
+            BigDecimal requiredQty = item.getTotalRequiredQuantity(totalQuantityProduced);
+            if (requiredQty == null || requiredQty.compareTo(BigDecimal.ZERO) <= 0) {
+                continue;
+            }
+
+            BigDecimal normalizedQty = convertToIngredientUnit(requiredQty, item, item.getIngredient());
+            BigDecimal ingredientCost = calculateIngredientCostFefo(item.getIngredient(), normalizedQty, asOfDateTime);
+            totalRawMaterialCost = totalRawMaterialCost.add(ingredientCost);
+        }
+
+        return totalRawMaterialCost.setScale(4, RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal convertToIngredientUnit(BigDecimal requiredQty,
+                                               RecipeItem item,
+                                               Ingredient ingredient) {
+        String recipeUnit = item.getUnit();
+        String ingredientUnit = ingredient.getUnitOfMeasure() != null ? ingredient.getUnitOfMeasure().name() : null;
+
+        if (recipeUnit == null || recipeUnit.isBlank() || ingredientUnit == null || ingredientUnit.isBlank()) {
+            return requiredQty;
+        }
+
+        try {
+            return unitConversionService.convert(requiredQty, recipeUnit, ingredientUnit);
+        } catch (Exception ex) {
+            log.debug("Unit conversion fallback for ingredient={} from {} to {}. Cause={} ",
+                ingredient.getName(), recipeUnit, ingredientUnit, ex.getMessage());
+            return requiredQty;
+        }
+    }
+
+    private BigDecimal calculateIngredientCostFefo(Ingredient ingredient,
+                                                   BigDecimal requiredQty,
+                                                   LocalDateTime asOfDateTime) {
+        if (ingredient == null || ingredient.getId() == null || requiredQty == null || requiredQty.compareTo(BigDecimal.ZERO) <= 0) {
+            return BigDecimal.ZERO;
+        }
+
+        List<IngredientBatch> batches = ingredientBatchRepository
+            .findAvailableBatchesForIngredientAsOf(ingredient.getId(), asOfDateTime);
+
+        BigDecimal remaining = requiredQty;
+        BigDecimal cost = BigDecimal.ZERO;
+
+        for (IngredientBatch batch : batches) {
+            if (remaining.compareTo(BigDecimal.ZERO) <= 0) {
+                break;
+            }
+
+            BigDecimal available = batch.getQuantity() != null ? batch.getQuantity() : BigDecimal.ZERO;
+            if (available.compareTo(BigDecimal.ZERO) <= 0) {
+                continue;
+            }
+
+            BigDecimal consume = available.min(remaining);
+            BigDecimal unitPrice = batch.getUnitPrice();
+            if (unitPrice == null || unitPrice.compareTo(BigDecimal.ZERO) < 0) {
+                unitPrice = ingredient.getLastPurchasePrice() != null ? ingredient.getLastPurchasePrice() : BigDecimal.ZERO;
+            }
+
+            cost = cost.add(consume.multiply(unitPrice));
+            remaining = remaining.subtract(consume);
+        }
+
+        if (remaining.compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal fallbackUnitPrice = ingredient.getLastPurchasePrice() != null
+                ? ingredient.getLastPurchasePrice()
+                : BigDecimal.ZERO;
+            cost = cost.add(remaining.multiply(fallbackUnitPrice));
+        }
+
+        return cost;
     }
     
     /**

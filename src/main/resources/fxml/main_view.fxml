@@ -32,17 +32,18 @@
             
             <Label text="Meniu Principal" styleClass="label-title"/>
             
-            <Button text="📊 Dashboard" onAction="#showDashboard" styleClass="menu-button"/>
-            <Button text="📦 Gestiune Stocuri" onAction="#showInventory" styleClass="menu-button"/>
-            <Button text="🏭 Producție" onAction="#showProduction" styleClass="menu-button"/>
-            <Button text="💰 Punct de Vânzare (POS)" onAction="#showPOS" styleClass="menu-button"/>
+            <Button fx:id="dashboardButton" text="📊 Dashboard" onAction="#showDashboard" styleClass="menu-button"/>
+            <Button fx:id="inventoryButton" text="📦 Gestiune Stocuri" onAction="#showInventory" styleClass="menu-button"/>
+            <Button fx:id="productionButton" text="🏭 Producție" onAction="#showProduction" styleClass="menu-button"/>
+            <Button fx:id="schedulingButton" text="🗓️ Scheduler" onAction="#showScheduling" styleClass="menu-button"/>
+            <Button fx:id="posButton" text="💰 Punct de Vânzare (POS)" onAction="#showPOS" styleClass="menu-button"/>
             
             <Separator/>
             
             <Label text="Administrare" styleClass="label-subtitle"/>
-            <Button text="🧾 Facturi SPV" onAction="#showInvoices" styleClass="menu-button"/>
-            <Button text="📈 Rapoarte" onAction="#showReports" styleClass="menu-button"/>
-            <Button text="⚙️ Setări" onAction="#showSettings" styleClass="menu-button"/>
+            <Button fx:id="invoicesButton" text="🧾 Facturi SPV" onAction="#showInvoices" styleClass="menu-button"/>
+            <Button fx:id="reportsButton" text="📈 Rapoarte" onAction="#showReports" styleClass="menu-button"/>
+            <Button fx:id="settingsButton" text="⚙️ Setări" onAction="#showSettings" styleClass="menu-button"/>
             
             <Region VBox.vgrow="ALWAYS"/>
             

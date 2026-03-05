@@ -101,6 +101,7 @@
                     <Button text="💾 Salvează Setări" onAction="#saveSettings" styleClass="button, success"/>
                     <Button text="🔄 Restaurează Default" onAction="#restoreDefaults" styleClass="button"/>
                     <Button text="💾 Backup Acum" onAction="#backupNow" styleClass="button, primary"/>
+                    <Button text="♻ Restore DB" onAction="#restoreDatabaseFromBackup" styleClass="button, warning"/>
                 </HBox>
             </VBox>
         </Tab>
